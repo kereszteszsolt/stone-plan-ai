@@ -2,7 +2,7 @@
 
 ## Status
 
-Release 0.1 is in progress. TFA-001–002's local stack, persistent task CRUD API, and Angular task screen have been checked. The AI planning, plan save, and completion flow remains pending TFA-003–004.
+Release 0.1 is in progress. TFA-001–003's local stack, persistent task CRUD and editable unsaved AI preview have been checked. Plan save and completion tracking remain pending TFA-004.
 
 ## Story evidence
 
@@ -10,7 +10,7 @@ Release 0.1 is in progress. TFA-001–002's local stack, persistent task CRUD AP
 | --- | --- | --- | --- |
 | TFA-001 | API/web builds, 3 HTTP tests, schema/migration checks | Native and Docker shell rendered; Compose health/persistence smoke passed; model smoke not applicable | Implemented |
 | TFA-002 | Both builds; 37 backend HTTP tests and 10 Angular tests; live CRUD and cascade smoke | Browser create/edit/delete with reload; failed-save recovery; 320/390/1200 px and light/dark forms | Implemented |
-| TFA-003 | Not run | Not run | Planned |
+| TFA-003 | Both builds; 79 backend tests, including 42 fixed-response/scheduling/preview tests; 21 Angular tests | Real host Ollama through Docker web/API; editable unsaved preview and responsive/error-state smoke | Implemented |
 | TFA-004 | Not run | Not run | Planned |
 
 Record only actual commands, relevant results, and blockers after implementation. Mark a story `Implemented` only when its acceptance criteria are checked and supported by evidence.
@@ -68,6 +68,29 @@ The standalone browser smoke ran after the database smoke. It created a task thr
 Browser checks covered 1200 px/light, 390 px/dark, and 320 px/light. All four form fields were present and horizontal document overflow checks passed. Local screenshots were captured to `/tmp/task-flow-ai-tfa002-KwpBOk/`; the desktop light and mobile dark images were visually inspected. These are local browser artifacts, not committed assets or hosted deployment evidence. Chrome used the cached headless-shell executable and temporary shared libraries described in TFA-001.
 
 README launch/check instructions and REST/input documentation were updated. The regular Compose stack remains active at `http://localhost:8080`; API and database ports remain unpublished. There are no AI requests or plan/completion controls in TFA-002, and Release 0.1 is still incomplete.
+
+## TFA-003 evidence — 2026-10-14
+
+Uses the existing Node.js 24.18.0/npm 11.16.0/Docker 29.6.1/Compose 5.3.0 environment and the existing external local Ollama server. No new dependency, migration, model installation or Ollama Compose service was needed.
+
+| Location | Command | Result |
+| --- | --- | --- |
+| `apps/api` | `npm run build` | Strict TypeScript build and Prisma generation passed |
+| `apps/api` | `npm test` | 3 suites, 79 tests passed, including prompt escaping, contextual JSON schema, output bounds/types, malformed/truncated/oversized replies, timeout/offline/configuration errors, deterministic packing, and read-only preview HTTP contracts |
+| `apps/api` | `npm test -- --runTestsByPath test/plan.spec.ts` | 42 focused tests passed after tightening the daily-limit schema and prompt; final full suite also passed |
+| `apps/web` | `npm run build` | Angular production build passed; initial bundle 236.64 kB |
+| `apps/web` | `npm test` | 2 files, 21 tests passed: CRUD plus explicit/duplicate generation, native editing, no save requests, retryable failures, draft retention, discard, stale task response rejection and HTTP cancellation |
+| Root | `docker compose up --build -d --wait` | API/web rebuilt and started with the configured external model and timeout; three services only |
+| Root | `sh infra/smoke.sh` | Existing task CRUD, HTTP cascade, Nginx proxy and database restart persistence passed before the model browser check |
+| `apps/web` | `CHROME_EXECUTABLE=… LD_LIBRARY_PATH=… npm run test:preview-smoke` | Real model preview through browser/Nginx/API, unsaved editing and reload discard, four controlled failure responses and 1200/390/320 px theme checks passed |
+
+Host `/api/tags` and an API-container probe confirmed the already installed `qwen3:0.6b` was reachable at `http://host.docker.internal:11434`. Only the ignored root/native `.env` model placeholders were changed to that installed model. The real smoke returned status 200 with **3 steps and 90 minutes**, stable 0-based order and 1-based days, and no daily total above 60 minutes for its 3-day task. The test made one real generation in its successful run; its four later offline/invalid-output/budget/timeout UI responses were controlled browser fixtures, not additional real inference calls.
+
+The first real attempt returned 422 because a step exceeded the daily budget. The backend rejected it without storing a plan. The provider request now embeds the actual daily maximum in both JSON schema and prompt; backend validation/scheduling remains authoritative and was not relaxed. The successful rerun confirmed generation, edited title/estimate values, unchanged `updatedAt`, empty persisted `subtasks`, and no plan-save request. The test deleted only its own task; existing user tasks were preserved.
+
+Light desktop (1200 px), dark mobile (390 px), and light narrow mobile (320 px) previews had every title/estimate input present and no horizontal document overflow. Live screenshots were captured under `/tmp/task-flow-ai-tfa003-I1a2w1/`; desktop/light and mobile/dark images were visually inspected. Chrome reported no page JavaScript errors. These are temporary local browser artifacts, not hosted deployment evidence or committed assets.
+
+README documents native/container URLs, installed-model selection, timeout bounds, the host-gateway probe and private-interface Linux guidance. Nginx's 130-second read timeout exceeds the maximum 120-second provider timeout. The local Ollama server's configuration was left unchanged; the API model client has no automatic cloud fallback or response repair. Generation remains explicit and read-only. TFA-004 plan saving/completion and the full MVP end-to-end flow have not been implemented or claimed.
 
 The release closes after one successful end-to-end local demo: create task → generate Ollama plan → edit → save → mark complete → reload and verify persistence.
 

@@ -4,7 +4,7 @@
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-D22128?style=flat-square&labelColor=2B3137&logo=apache&logoColor=white)](LICENSE)
 
-**Status: Release 0.1 in progress.** TFA-001–002 are implemented and verified: a local Docker Compose stack, Prisma persistence, task CRUD API, and a responsive Angular task list, form, and detail view. Plan generation, plan saving, and completion tracking are still planned in TFA-003–004.
+**Status: Release 0.1 in progress.** TFA-001–003 are implemented and verified: a local stack, persistent task CRUD, and an Ollama-generated, editable, unsaved plan preview. Plan saving and completion tracking remain planned in TFA-004.
 
 Task Flow AI is a small, local-first, single-user task planner. It will turn one goal into an editable AI-generated plan, assign subtasks to a limited number of days, save the accepted plan, and track progress.
 
@@ -34,7 +34,7 @@ Tasks can also be listed, edited, and deleted. The application has no user accou
 | Infrastructure | Docker Compose, Nginx | Containerized Angular, NestJS, and PostgreSQL; one localhost entry point |
 | Tests | Jest + Angular/Vitest | Focused API and UI checks |
 
-The AI rows describe later MVP stories. Task requests already use backend Zod validation. TFA-001–002 verify the local stack and persistent task CRUD.
+Task requests and AI output use backend Zod validation. TFA-001–003 verify the local stack, persistent task CRUD, and unsaved AI previews. Saved subtasks and completion tracking are the remaining MVP work.
 
 This is a **plain monorepo** (one Git repository with `apps/web` and `apps/api`), not an Nx/Turborepo-managed workspace. Each app has its own normal tooling. Docker Compose coordinates their containers; it does not replace or require a monorepo framework.
 
@@ -60,9 +60,27 @@ Compose waits for PostgreSQL readiness. Before listening, the API runs `prisma m
 
 The containers use Compose's default network and one named `postgres_data` volume. `docker compose down` removes the containers while keeping database data. `docker compose down --volumes` deletes that data.
 
-**Ollama remains a separate host-installed HTTP service**, configured with `OLLAMA_BASE_URL` and `OLLAMA_MODEL`. The API container has a `host.docker.internal:host-gateway` mapping for Linux. TFA-001–002 make no Ollama calls, so an absent model server does not prevent startup. When TFA-003 implements generation, the host URL must be reachable from the container; any host listen-address adjustment should remain limited to trusted local access.
+**Ollama runs separately from the demo**, configured with `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, and `OLLAMA_TIMEOUT_MS`. Compose does not install a model or start Ollama. Task CRUD starts even when Ollama is unavailable; only an explicit **Generate plan** request contacts the model. The browser calls NestJS through `/api`.
 
 A hosted OpenRouter alternative has its own **optional post-MVP story, TFA-005**, but **is not part of Release 0.1 and is not implemented yet**. Ollama remains the default; the browser never calls an AI provider directly.
+
+## Ollama plan preview
+
+Before generating, set `OLLAMA_MODEL` in the root `.env` to an **already installed local model**. The local smoke used `qwen3:0.6b`. The container's default `OLLAMA_BASE_URL` is `http://host.docker.internal:11434`; a native API uses its own `.env` and usually `http://localhost:11434`.
+
+Select a task and choose **Generate plan**. The backend requests structured JSON, validates 3–8 steps with trimmed titles and positive integer minute estimates, then assigns days in order. Each step must fit in a day and all steps must fit the available days. An over-capacity response is rejected instead of shortened or rearranged.
+
+Edit the titles and estimates directly in the preview. **The preview is unsaved:** it disappears on reload, task switching, task editing, or explicit discard. Generated day labels retain the original schedule while you edit estimates. **Generate again** replaces the preview only after a successful response; a failed attempt keeps your draft and shows a retryable error. Plan saving is TFA-004 work.
+
+`OLLAMA_TIMEOUT_MS` defaults to 60000 and accepts integer values from 1000 to 120000. Nginx waits up to 130 seconds so backend timeout errors can reach the UI. Generation errors distinguish an unavailable/unconfigured model, timeout, invalid response and insufficient time budget. There is one Ollama request per explicit generation, with no automatic repair or cloud fallback; cloud model tags are rejected.
+
+The API container already has `host.docker.internal:host-gateway` for Linux. Check host reachability with:
+
+```sh
+docker compose exec -T api node -e "fetch('http://host.docker.internal:11434/api/tags').then(r=>console.log(r.status)).catch(e=>{console.error(e.message);process.exit(1)})"
+```
+
+On native Linux, an Ollama server bound only to loopback may not accept container connections. Inspect `docker compose exec -T api getent hosts host.docker.internal`, then, if needed, configure the external Ollama service's `OLLAMA_HOST` to that **private host interface** at port 11434 and limit access to trusted local clients. Match the native API URL if changing that address. Ollama's [server configuration instructions](https://docs.ollama.com/faq) describe how to set the service environment. The local verification used an existing reachable server and did not change its configuration.
 
 ## Native development
 
@@ -106,6 +124,8 @@ CHROME_EXECUTABLE=/path/to/local/chrome npm run test:smoke
 ```
 
 Use an installed Chrome or Chromium headless-shell executable. Playwright Core controls that local browser and does not install one. The test creates, edits, reloads and deletes its own task; checks failed-save recovery, confirmation and retry; and captures 1200/390/320-pixel forms in a temporary directory. Run it after the database smoke, since that smoke restarts PostgreSQL. On Windows, set `CHROME_EXECUTABLE` in your shell before running the npm command.
+
+For a real configured Ollama preview, run `CHROME_EXECUTABLE=/path/to/local/chrome npm run test:preview-smoke` from `apps/web` after the database smoke. It makes one real generation, verifies editing without persistence and reload discard, checks four controlled UI error responses, and captures light/dark responsive previews. It removes its own task while preserving existing tasks.
 
 Verified commands and limits are recorded in the [verification record](docs/releases/release-0.1-mvp/verification.md).
 

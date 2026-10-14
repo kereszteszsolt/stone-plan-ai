@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Keresztes Zsolt <https://kereszteszsolt.hu>
 // SPDX-License-Identifier: Apache-2.0
 
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import type { Observable } from 'rxjs';
 
@@ -32,6 +32,17 @@ export interface TaskDetail extends Task {
   subtasks: Subtask[];
 }
 
+export interface PlannedSubtask {
+  title: string;
+  estimatedMinutes: number;
+  day: number;
+  order: number;
+}
+
+export interface PlanPreview {
+  subtasks: PlannedSubtask[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class TasksApiService {
   private readonly http = inject(HttpClient);
@@ -55,5 +66,26 @@ export class TasksApiService {
 
   delete(id: string): Observable<void> {
     return this.http.delete<void>(`${this.url}/${id}`);
+  }
+
+  generatePreview(id: string): Observable<PlanPreview> {
+    return this.http.post<PlanPreview>(`${this.url}/${id}/plan-preview`, {});
+  }
+
+  errorMessage(error: unknown): string {
+    if (error instanceof HttpErrorResponse) {
+      if (error.status === 0) return 'Unable to reach the server. Please try again.';
+      const body: unknown = error.error;
+      const aiCodes = ['OLLAMA_NOT_CONFIGURED', 'OLLAMA_UNAVAILABLE', 'OLLAMA_TIMEOUT', 'INVALID_AI_OUTPUT'];
+      const aiError = body && typeof body === 'object' && 'code' in body && typeof body.code === 'string' && aiCodes.includes(body.code);
+      if (error.status >= 500 && !aiError) return 'Something went wrong. Please try again.';
+      if (body && typeof body === 'object' && 'message' in body) {
+        if (typeof body.message === 'string') return body.message;
+        if (Array.isArray(body.message) && body.message.every((item: unknown) => typeof item === 'string')) {
+          return body.message.join(' ');
+        }
+      }
+    }
+    return 'Something went wrong. Please try again.';
   }
 }

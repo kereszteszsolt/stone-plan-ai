@@ -1,0 +1,45 @@
+<section class="preview" aria-labelledby="preview-heading" [attr.aria-busy]="generating()">
+  <h3 id="preview-heading">Plan preview</h3>
+  <p class="muted">Generate steps with your local model, then review and edit them.</p>
+  <div class="actions">
+    <button type="button" class="primary" (click)="generate()" [disabled]="generating()">
+      {{ generating() ? 'Generating…' : scheduled().length ? 'Generate again' : 'Generate plan' }}
+    </button>
+    @if (scheduled().length) {
+      <button type="button" (click)="discard()" [disabled]="generating()">Discard preview</button>
+    }
+  </div>
+  @if (generating()) { <p role="status">Waiting for the local model…</p> }
+  @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+  @if (scheduled().length) {
+    <p class="unsaved" role="status">Unsaved preview — edits stay on this page. Reloading or switching tasks discards it.</p>
+    <div [formGroup]="form">
+      <fieldset [disabled]="generating()">
+        <div formArrayName="subtasks">
+          @for (step of steps.controls; track step; let i = $index) {
+            <div class="step" [formGroupName]="i">
+              <p class="step-caption">Step {{ i + 1 }} · Generated day {{ scheduled()[i].day }}</p>
+              <div class="step-fields">
+                <div class="field">
+                  <label [for]="'step-title-' + i">Step {{ i + 1 }} title</label>
+                  <input [id]="'step-title-' + i" formControlName="title" maxlength="160" required
+                    [attr.aria-invalid]="step.controls.title.invalid" [attr.aria-describedby]="'step-title-hint-' + i">
+                  <small [id]="'step-title-hint-' + i" [class.error]="step.controls.title.invalid">Use 1–160 characters.</small>
+                </div>
+                <div class="field">
+                  <label [for]="'step-minutes-' + i">Step {{ i + 1 }} minutes</label>
+                  <input [id]="'step-minutes-' + i" type="number" formControlName="estimatedMinutes" min="1" [max]="task().minutesPerDay" step="1" required
+                    [attr.aria-invalid]="step.controls.estimatedMinutes.invalid" [attr.aria-describedby]="'step-minutes-hint-' + i">
+                  <small [id]="'step-minutes-hint-' + i" [class.error]="step.controls.estimatedMinutes.invalid">1–{{ task().minutesPerDay }} whole minutes.</small>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      </fieldset>
+    </div>
+    <p [class.error]="overBudget()">Edited estimates: {{ totalMinutes() }} / {{ task().days * task().minutesPerDay }} available minutes.</p>
+    @if (overBudget()) { <p class="error" role="alert">These estimates exceed your total time budget. Reduce them or edit the task's budget.</p> }
+    <p class="muted small">Day labels show the generated schedule. Generate again replaces this preview.</p>
+  }
+</section>

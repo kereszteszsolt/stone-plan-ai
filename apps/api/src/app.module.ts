@@ -6,9 +6,12 @@ import { HealthController } from './health.controller';
 import { PrismaService } from './prisma.service';
 import { TasksController } from './tasks/tasks.controller';
 import { TasksService } from './tasks/tasks.service';
+import { PlanPreviewController } from './plan/plan-preview.controller';
+import { PlanPreviewService } from './plan/plan-preview.service';
+import { OllamaService } from './plan/ollama.service';
 
 @Module({
-  controllers: [HealthController, TasksController],
-  providers: [PrismaService, TasksService],
+  controllers: [HealthController, TasksController, PlanPreviewController],
+  providers: [PrismaService, TasksService, PlanPreviewService, OllamaService],
 })
 export class AppModule {}

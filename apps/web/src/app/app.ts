@@ -1,12 +1,12 @@
 // SPDX-FileCopyrightText: 2026 Keresztes Zsolt <https://kereszteszsolt.hu>
 // SPDX-License-Identifier: Apache-2.0
 
-import { HttpErrorResponse } from '@angular/common/http';
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal, type OnInit } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators, type AbstractControl, type ValidationErrors } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { TasksApiService, type Task, type TaskDetail } from './tasks-api.service';
+import { PlanPreviewComponent } from './plan-preview/plan-preview';
 
 function integer(control: AbstractControl): ValidationErrors | null {
   return Number.isInteger(control.value) ? null : { integer: true };
@@ -15,7 +15,7 @@ function integer(control: AbstractControl): ValidationErrors | null {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [DatePipe, ReactiveFormsModule],
+  imports: [DatePipe, ReactiveFormsModule, PlanPreviewComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './app.html',
   styleUrl: './app.css',
@@ -64,7 +64,7 @@ export class App implements OnInit {
         this.detailError.set('');
       }
     } catch (error) {
-      this.listError.set(this.errorMessage(error));
+      this.listError.set(this.api.errorMessage(error));
     } finally {
       this.loading.set(false);
     }
@@ -83,7 +83,7 @@ export class App implements OnInit {
       const task = await firstValueFrom(this.api.get(id));
       if (version === this.selectionVersion) this.selectedTask.set(task);
     } catch (error) {
-      if (version === this.selectionVersion) this.detailError.set(this.errorMessage(error));
+      if (version === this.selectionVersion) this.detailError.set(this.api.errorMessage(error));
     } finally {
       if (version === this.selectionVersion) this.detailLoading.set(false);
     }
@@ -147,7 +147,7 @@ export class App implements OnInit {
       this.mode.set('idle');
       this.notice.set(editing ? 'Task updated.' : 'Task created.');
     } catch (error) {
-      this.formError.set(this.errorMessage(error));
+      this.formError.set(this.api.errorMessage(error));
     } finally {
       this.saving.set(false);
     }
@@ -167,24 +167,10 @@ export class App implements OnInit {
       this.confirmingDelete.set(false);
       this.notice.set('Task deleted.');
     } catch (error) {
-      this.detailError.set(this.errorMessage(error));
+      this.detailError.set(this.api.errorMessage(error));
     } finally {
       this.deleting.set(false);
     }
   }
 
-  private errorMessage(error: unknown): string {
-    if (error instanceof HttpErrorResponse) {
-      if (error.status === 0) return 'Unable to reach the server. Please try again.';
-      if (error.status >= 500) return 'Something went wrong. Please try again.';
-      const body: unknown = error.error;
-      if (body && typeof body === 'object' && 'message' in body) {
-        if (typeof body.message === 'string') return body.message;
-        if (Array.isArray(body.message) && body.message.every((item: unknown) => typeof item === 'string')) {
-          return body.message.join(' ');
-        }
-      }
-    }
-    return 'Something went wrong. Please try again.';
-  }
 }

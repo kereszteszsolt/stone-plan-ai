@@ -106,6 +106,9 @@
             <button type="button" class="danger-outline" (click)="confirmingDelete.set(true)" [disabled]="busy()">Delete</button>
           </div>
         }
+        @if (!task.subtasks.length && !confirmingDelete()) {
+          <app-plan-preview [task]="task" />
+        }
       } @else {
         <h2 id="detail-heading">Task details</h2>
         @if (detailError()) {
