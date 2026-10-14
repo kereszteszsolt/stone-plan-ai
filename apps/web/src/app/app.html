@@ -1,0 +1,120 @@
+<main>
+  <header class="page-header">
+    <div>
+      <h1>Task Flow AI</h1>
+      <p class="muted">Break goals into practical steps.</p>
+    </div>
+    <button type="button" class="primary" (click)="startCreate()" [disabled]="loading() || busy() || mode() !== 'idle'">New task</button>
+  </header>
+
+  <div class="notice" role="status" aria-live="polite">{{ notice() }}</div>
+
+  <div class="workspace">
+    <section class="panel task-list" aria-labelledby="tasks-heading" [attr.aria-busy]="loading()">
+      <div class="panel-header">
+        <h2 id="tasks-heading">Your tasks <span class="count">{{ tasks().length }}</span></h2>
+        <button type="button" class="quiet" (click)="loadTasks()" [disabled]="loading() || busy() || mode() !== 'idle'">Refresh</button>
+      </div>
+      @if (loading()) {
+        <p role="status">Loading tasks…</p>
+      } @else if (listError()) {
+        <p class="error" role="alert">{{ listError() }}</p>
+        <button type="button" (click)="loadTasks()" [disabled]="busy() || mode() !== 'idle'">Try again</button>
+      } @else if (!tasks().length) {
+        <div class="empty-state">
+          <h3>No tasks yet</h3>
+          <p class="muted">Create a task to keep track of a goal and its time budget.</p>
+        </div>
+      } @else {
+        <ul>
+          @for (task of tasks(); track task.id) {
+            <li>
+              <button type="button" class="task-button" [class.selected]="selectedId() === task.id"
+                [attr.aria-pressed]="selectedId() === task.id" (click)="selectTask(task.id)"
+                [disabled]="busy() || mode() !== 'idle'" [attr.data-task-id]="task.id">
+                <strong>{{ task.title }}</strong>
+                <span class="muted">{{ task.days }} {{ task.days === 1 ? 'day' : 'days' }} · {{ task.minutesPerDay }} min/day</span>
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+
+    <section class="panel task-detail" aria-labelledby="detail-heading" [attr.aria-busy]="detailLoading() || busy()">
+      @if (mode() !== 'idle') {
+        <h2 id="detail-heading">{{ mode() === 'edit' ? 'Edit task' : 'New task' }}</h2>
+        <form [formGroup]="form" (ngSubmit)="saveTask()">
+          <fieldset [disabled]="busy()">
+            <div class="field">
+              <label for="task-title">Title <span class="muted">(required)</span></label>
+              <input id="task-title" formControlName="title" maxlength="160" required
+                [attr.aria-invalid]="form.controls.title.touched && form.controls.title.invalid" aria-describedby="title-hint">
+              <small id="title-hint" [class.error]="form.controls.title.touched && form.controls.title.invalid">Use 1–160 characters.</small>
+            </div>
+            <div class="field">
+              <label for="task-description">Description <span class="muted">(optional)</span></label>
+              <textarea id="task-description" formControlName="description" maxlength="2000" rows="4" aria-describedby="description-hint"
+                [attr.aria-invalid]="form.controls.description.touched && form.controls.description.invalid"></textarea>
+              <small id="description-hint" [class.error]="form.controls.description.touched && form.controls.description.invalid">Up to 2000 characters.</small>
+            </div>
+            <div class="form-row">
+              <div class="field">
+                <label for="task-days">Days</label>
+                <input id="task-days" type="number" formControlName="days" min="1" max="14" step="1" required
+                  [attr.aria-invalid]="form.controls.days.touched && form.controls.days.invalid" aria-describedby="days-hint">
+                <small id="days-hint" [class.error]="form.controls.days.touched && form.controls.days.invalid">A whole number from 1 to 14.</small>
+              </div>
+              <div class="field">
+                <label for="task-minutes">Minutes per day</label>
+                <input id="task-minutes" type="number" formControlName="minutesPerDay" min="15" max="240" step="1" required
+                  [attr.aria-invalid]="form.controls.minutesPerDay.touched && form.controls.minutesPerDay.invalid" aria-describedby="minutes-hint">
+                <small id="minutes-hint" [class.error]="form.controls.minutesPerDay.touched && form.controls.minutesPerDay.invalid">A whole number from 15 to 240.</small>
+              </div>
+            </div>
+          </fieldset>
+          @if (formError()) { <p class="error" role="alert">{{ formError() }}</p> }
+          <div class="actions">
+            <button type="submit" class="primary" [disabled]="busy()">{{ saving() ? 'Saving…' : 'Save task' }}</button>
+            <button type="button" (click)="cancelForm()" [disabled]="busy()">Cancel</button>
+          </div>
+        </form>
+      } @else if (detailLoading()) {
+        <h2 id="detail-heading">Task details</h2>
+        <p role="status">Loading task…</p>
+      } @else if (selectedTask(); as task) {
+        <h2 id="detail-heading" class="task-title">{{ task.title }}</h2>
+        @if (detailError()) { <p class="error" role="alert">{{ detailError() }}</p> }
+        <p class="description" [class.muted]="!task.description">{{ task.description || 'No description.' }}</p>
+        <dl class="task-facts">
+          <div><dt>Days</dt><dd>{{ task.days }}</dd></div>
+          <div><dt>Minutes per day</dt><dd>{{ task.minutesPerDay }}</dd></div>
+          <div><dt>Total time budget</dt><dd>{{ task.days * task.minutesPerDay }} minutes</dd></div>
+          <div><dt>Created</dt><dd>{{ task.createdAt | date:'mediumDate' }}</dd></div>
+        </dl>
+        @if (confirmingDelete()) {
+          <div class="delete-confirmation">
+            <p>Delete this task permanently?</p>
+            <div class="actions">
+              <button type="button" class="danger" (click)="deleteTask()" [disabled]="busy()">{{ deleting() ? 'Deleting…' : 'Delete task' }}</button>
+              <button type="button" (click)="confirmingDelete.set(false)" [disabled]="busy()">Cancel</button>
+            </div>
+          </div>
+        } @else {
+          <div class="actions">
+            <button type="button" (click)="startEdit()" [disabled]="busy()">Edit</button>
+            <button type="button" class="danger-outline" (click)="confirmingDelete.set(true)" [disabled]="busy()">Delete</button>
+          </div>
+        }
+      } @else {
+        <h2 id="detail-heading">Task details</h2>
+        @if (detailError()) {
+          <p class="error" role="alert">{{ detailError() }}</p>
+          <button type="button" (click)="selectTask(selectedId()!)">Try again</button>
+        } @else {
+          <p class="muted">Select a task to see its details, or create a new one.</p>
+        }
+      }
+    </section>
+  </div>
+</main>

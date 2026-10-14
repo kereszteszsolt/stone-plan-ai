@@ -4,7 +4,7 @@
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-D22128?style=flat-square&labelColor=2B3137&logo=apache&logoColor=white)](LICENSE)
 
-**Status: Release 0.1 in progress.** TFA-001 supplies the NestJS health endpoint, a standalone Angular shell, the Prisma schema and initial migration, and a local Docker Compose stack. Task CRUD, plan generation, plan saving, and completion tracking are still planned in TFA-002–004.
+**Status: Release 0.1 in progress.** TFA-001–002 are implemented and verified: a local Docker Compose stack, Prisma persistence, task CRUD API, and a responsive Angular task list, form, and detail view. Plan generation, plan saving, and completion tracking are still planned in TFA-003–004.
 
 Task Flow AI is a small, local-first, single-user task planner. It will turn one goal into an editable AI-generated plan, assign subtasks to a limited number of days, save the accepted plan, and track progress.
 
@@ -32,9 +32,9 @@ Tasks can also be listed, edited, and deleted. The application has no user accou
 | AI | Ollama | Locally hosted plan generation |
 | AI output | JSON schema + Zod | Validate structured plan proposals |
 | Infrastructure | Docker Compose, Nginx | Containerized Angular, NestJS, and PostgreSQL; one localhost entry point |
-| Tests | Jest + Angular unit tests | Focused service and UI checks |
+| Tests | Jest + Angular/Vitest | Focused API and UI checks |
 
-The AI rows and Angular unit tests describe later MVP stories. TFA-001 verifies the API foundation, builds, database migration, and local stack.
+The AI rows describe later MVP stories. Task requests already use backend Zod validation. TFA-001–002 verify the local stack and persistent task CRUD.
 
 This is a **plain monorepo** (one Git repository with `apps/web` and `apps/api`), not an Nx/Turborepo-managed workspace. Each app has its own normal tooling. Docker Compose coordinates their containers; it does not replace or require a monorepo framework.
 
@@ -48,7 +48,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Use a URL-safe password because Compose includes it in the database connection URL. Open **http://localhost:8080**. The current Angular shell displays the application name and tagline; **http://localhost:8080/api/health** returns `{"status":"ok"}`.
+Use a URL-safe password because Compose includes it in the database connection URL. Open **http://localhost:8080** to create a task, select it, edit its details, or confirm its deletion. Changes persist after a page reload. **http://localhost:8080/api/health** returns `{"status":"ok"}`.
 
 The command starts:
 
@@ -60,7 +60,7 @@ Compose waits for PostgreSQL readiness. Before listening, the API runs `prisma m
 
 The containers use Compose's default network and one named `postgres_data` volume. `docker compose down` removes the containers while keeping database data. `docker compose down --volumes` deletes that data.
 
-**Ollama remains a separate host-installed HTTP service**, configured with `OLLAMA_BASE_URL` and `OLLAMA_MODEL`. The API container has a `host.docker.internal:host-gateway` mapping for Linux. TFA-001 makes no Ollama calls, so an absent model server does not prevent startup. When TFA-003 implements generation, the host URL must be reachable from the container; any host listen-address adjustment should remain limited to trusted local access.
+**Ollama remains a separate host-installed HTTP service**, configured with `OLLAMA_BASE_URL` and `OLLAMA_MODEL`. The API container has a `host.docker.internal:host-gateway` mapping for Linux. TFA-001–002 make no Ollama calls, so an absent model server does not prevent startup. When TFA-003 implements generation, the host URL must be reachable from the container; any host listen-address adjustment should remain limited to trusted local access.
 
 A hosted OpenRouter alternative has its own **optional post-MVP story, TFA-005**, but **is not part of Release 0.1 and is not implemented yet**. Ollama remains the default; the browser never calls an AI provider directly.
 
@@ -95,9 +95,17 @@ Open **http://localhost:4200**. Angular's development proxy forwards relative `/
 
 ## Checks
 
-From `apps/api`: `npm run prisma:validate`, `npm run build`, and `npm test`. From `apps/web`: `npm run build`.
+From `apps/api`: `npm run prisma:validate`, `npm run build`, and `npm test`. From `apps/web`: `npm run build` and `npm test`.
 
-For the running Docker demo, run `sh infra/smoke.sh` from the repository root. It checks the website and Nginx health proxy, migration status, Prisma defaults and relational constraints, database restart persistence, and cascading deletion. It restarts only this project's database and removes its own temporary test task. If using another web port, set `TASK_FLOW_SMOKE_URL=http://localhost:YOUR_PORT`.
+For the running Docker demo, run `sh infra/smoke.sh` from the repository root. It checks the website and Nginx health proxy, task CRUD and validation, migration status, Prisma defaults and relational constraints, database restart persistence, and cascading deletion. It restarts only this project's database and removes its own temporary test tasks. If using another web port, set `TASK_FLOW_SMOKE_URL=http://localhost:YOUR_PORT`.
+
+After that smoke finishes, the live browser check is available from `apps/web`:
+
+```sh
+CHROME_EXECUTABLE=/path/to/local/chrome npm run test:smoke
+```
+
+Use an installed Chrome or Chromium headless-shell executable. Playwright Core controls that local browser and does not install one. The test creates, edits, reloads and deletes its own task; checks failed-save recovery, confirmation and retry; and captures 1200/390/320-pixel forms in a temporary directory. Run it after the database smoke, since that smoke restarts PostgreSQL. On Windows, set `CHROME_EXECUTABLE` in your shell before running the npm command.
 
 Verified commands and limits are recorded in the [verification record](docs/releases/release-0.1-mvp/verification.md).
 

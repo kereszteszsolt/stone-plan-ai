@@ -36,7 +36,4 @@ describe('API HTTP boundary', () => {
     await request(app.getHttpServer()).get('/health').expect(404);
   });
 
-  it('does not expose task CRUD before its story', async () => {
-    await request(app.getHttpServer()).get('/api/tasks').expect(404);
-  });
 });

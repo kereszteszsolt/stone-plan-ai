@@ -2,7 +2,7 @@
 
 The goal is a tiny, local-first, single-user full-stack application. For the demo, **Angular (Nginx), NestJS and PostgreSQL run together in Docker Compose**. An existing Ollama installation runs separately on the host; Angular and NestJS can still run natively during development.
 
-TFA-001 implements the local stack, the Task/Subtask schema and migration, and `/api/health`. The task and AI flows below remain planned for TFA-002–004.
+TFA-001–002 implement the local stack, the Task/Subtask schema and migration, `/api/health`, task CRUD endpoints, and the Angular task screen. AI preview, plan saving, and completion tracking remain planned for TFA-003–004.
 
 ```mermaid
 flowchart TD
@@ -42,7 +42,9 @@ One task has **at most one saved plan** in the MVP. Before saving, a preview can
 
 `Task` owns many `Subtask` rows. Deleting a task also deletes its subtasks. No `User`, `Project`, `Plan`, `Agent`, or `Conversation` tables.
 
-## Planned REST endpoints
+## REST endpoints
+
+Health and task list/detail/create/update/delete are implemented. Plan preview/save and subtask completion routes remain planned. Task list responses currently contain the task fields; progress will be added with completion tracking.
 
 | Method | Route | Purpose |
 | --- | --- | --- |
@@ -60,7 +62,7 @@ The preview response contains editable `title`, `estimatedMinutes`, and server-a
 
 ## Rules and failure handling
 
-- Bound inputs (for example, `days: 1–14`, `minutesPerDay: 15–240`, and `3–8` proposed subtasks); finalize exact bounds during implementation.
+- Task inputs are validated with strict Zod schemas: a trimmed 1–160-character title, optional/null description up to 2000 characters, integer `days: 1–14`, and integer `minutesPerDay: 15–240`. Unknown fields and empty updates return 400. Malformed UUIDs return 400; missing tasks return 404. Scheduling values cannot change if saved subtasks already exist. Proposed AI subtask bounds remain to be finalized in TFA-003.
 - Make model output schema-constrained and validate it again server-side.
 - Schedule ordered subtasks deterministically and keep each day within its budget; reject an over-capacity plan with a user-friendly message rather than silently cutting work.
 - Handle unavailable Ollama, timeout, invalid JSON, and failed validation with a clear UI error and manual retry.

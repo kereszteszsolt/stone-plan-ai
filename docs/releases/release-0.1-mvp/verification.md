@@ -2,14 +2,14 @@
 
 ## Status
 
-Release 0.1 is in progress. TFA-001's API, Angular shell, PostgreSQL/Prisma foundation, and local stack have been checked. The task/AI end-to-end demo remains pending TFA-002–004.
+Release 0.1 is in progress. TFA-001–002's local stack, persistent task CRUD API, and Angular task screen have been checked. The AI planning, plan save, and completion flow remains pending TFA-003–004.
 
 ## Story evidence
 
 | Story | Focused checks | Browser / model smoke | Status |
 | --- | --- | --- | --- |
 | TFA-001 | API/web builds, 3 HTTP tests, schema/migration checks | Native and Docker shell rendered; Compose health/persistence smoke passed; model smoke not applicable | Implemented |
-| TFA-002 | Not run | Not run | Planned |
+| TFA-002 | Both builds; 37 backend HTTP tests and 10 Angular tests; live CRUD and cascade smoke | Browser create/edit/delete with reload; failed-save recovery; 320/390/1200 px and light/dark forms | Implemented |
 | TFA-003 | Not run | Not run | Planned |
 | TFA-004 | Not run | Not run | Planned |
 
@@ -46,6 +46,28 @@ The optional `infra/compose.dev.yaml` database port was used for the native chec
 Jest uses Node's experimental VM modules to load NestJS 12's ESM dependencies; its experimental warning does not indicate a failed test. The Prisma CLI's `deepmerge-ts` and `mysql2` overrides are covered by configuration validation, migration deployment/status, and the live database smoke.
 
 No AI request, model smoke, task CRUD UI, CI run, or full MVP end-to-end flow is claimed in TFA-001.
+
+## TFA-002 evidence — 2026-10-14
+
+Uses the same WSL/Node/Docker environment as TFA-001. No Prisma schema or migration changed. The old task-endpoint absence test was replaced by CRUD boundary tests; health contract/prefix coverage remains.
+
+| Location | Command | Result |
+| --- | --- | --- |
+| `apps/api` | `npm run build` | Strict TypeScript build and Prisma generation passed |
+| `apps/api` | `npm test` | 2 suites, 37 HTTP tests passed: CRUD contracts, text normalization, bounds/types, unknown fields, partial updates, 400/404/409 responses, and concurrent deletion mapping |
+| `apps/web` | `npm run build` | Angular production build passed; initial bundle 225.57 kB |
+| `apps/web` | `npm test` | 1 file, 10 Angular/Vitest tests passed: loading/empty/error states, validation, typed HTTP requests, failed-save draft retention, update/delete, and stale detail response rejection |
+| Root | `docker compose up --build -d --wait` | Updated API/web images built and the local demo started |
+| Root | `sh infra/smoke.sh` | Live task create/list/read/patch/delete, persisted edits, invalid update rejection without data changes, real HTTP cascade deletion, and database restart persistence passed; fixtures removed |
+| `apps/web` | `CHROME_EXECUTABLE=… LD_LIBRARY_PATH=… npm run test:smoke` | Live Angular CRUD/reload, failed-save recovery, deletion confirmation/cancel, list failure/retry, and responsive theme checks passed; no page JavaScript errors; fixture removed |
+
+The HTTP tests need permission to bind an ephemeral localhost server. Their first sandboxed invocation failed with `listen EPERM`; rerunning with local-network access passed. Two Angular assertions initially read before their async state/render update; waiting for the promise continuation corrected the tests. A browser form assertion likewise needed to wait for the form to render before counting fields. No targeted test failure remains.
+
+The standalone browser smoke ran after the database smoke. It created a task through the real UI, verified create and edit after reloads, forced a 503 on an edit and confirmed the draft and persisted data stayed intact, retried successfully, cancelled a deletion, then deleted and reloaded to confirm absence. A failed list request was shown with a working retry. It never uses a mock successful CRUD response.
+
+Browser checks covered 1200 px/light, 390 px/dark, and 320 px/light. All four form fields were present and horizontal document overflow checks passed. Local screenshots were captured to `/tmp/task-flow-ai-tfa002-KwpBOk/`; the desktop light and mobile dark images were visually inspected. These are local browser artifacts, not committed assets or hosted deployment evidence. Chrome used the cached headless-shell executable and temporary shared libraries described in TFA-001.
+
+README launch/check instructions and REST/input documentation were updated. The regular Compose stack remains active at `http://localhost:8080`; API and database ports remain unpublished. There are no AI requests or plan/completion controls in TFA-002, and Release 0.1 is still incomplete.
 
 The release closes after one successful end-to-end local demo: create task → generate Ollama plan → edit → save → mark complete → reload and verify persistence.
 

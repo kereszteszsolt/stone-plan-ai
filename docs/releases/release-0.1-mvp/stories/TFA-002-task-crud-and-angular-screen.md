@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned
+Implemented
 
 ## User story
 
@@ -18,13 +18,17 @@ Create, view, change, and delete tasks in one simple screen.
 
 ## Acceptance criteria
 
-- [ ] NestJS exposes task list, detail, create, update, and delete endpoints under `/api/tasks`.
-- [ ] Requests validate task text, day count, and daily minutes, and return clear 4xx responses for bad input.
-- [ ] Prisma persists tasks and deletes their subtasks when a task is removed.
-- [ ] Angular has one responsive task list, a task form, and a selected-task detail view.
-- [ ] UI state uses Angular Signals and calls the NestJS API through one typed API service.
-- [ ] Loading, empty, success, and error states are visible in the relevant screens.
-- [ ] Focused backend and Angular tests pass, and CRUD survives a page reload.
+- [x] NestJS exposes task list, detail, create, update, and delete endpoints under `/api/tasks`.
+- [x] Requests validate task text, day count, and daily minutes, and return clear 4xx responses for bad input.
+- [x] Prisma persists tasks and deletes their subtasks when a task is removed.
+- [x] Angular has one responsive task list, a task form, and a selected-task detail view.
+- [x] UI state uses Angular Signals and calls the NestJS API through one typed API service.
+- [x] Loading, empty, success, and error states are visible in the relevant screens.
+- [x] Focused backend and Angular tests pass, and CRUD survives a page reload.
+
+## Verification evidence
+
+See the [Release 0.1 verification record](../verification.md#tfa-002-evidence--2026-10-14). Both builds, 37 backend HTTP tests, 10 Angular/Vitest tests, live PostgreSQL CRUD/cascade checks, and the browser CRUD/reload flow passed. The browser check also verified failed-save recovery, confirmation/cancel, list retry, and forms at 1200/390/320 pixels in light and dark themes. No schema migration or AI feature was needed in this story.
 
 ## Out of scope
 
