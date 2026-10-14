@@ -34,6 +34,7 @@
                 [disabled]="busy() || mode() !== 'idle'" [attr.data-task-id]="task.id">
                 <strong>{{ task.title }}</strong>
                 <span class="muted">{{ task.days }} {{ task.days === 1 ? 'day' : 'days' }} · {{ task.minutesPerDay }} min/day</span>
+                <span class="muted">{{ task.progress.total ? task.progress.percent + '% complete · ' + task.progress.completed + '/' + task.progress.total + ' steps' : 'No saved plan' }}</span>
               </button>
             </li>
           }
@@ -72,6 +73,9 @@
                 <small id="minutes-hint" [class.error]="form.controls.minutesPerDay.touched && form.controls.minutesPerDay.invalid">A whole number from 15 to 240.</small>
               </div>
             </div>
+            @if (mode() === 'edit' && selectedTask()?.subtasks?.length) {
+              <p class="muted">The time budget is fixed because this task has a saved plan.</p>
+            }
           </fieldset>
           @if (formError()) { <p class="error" role="alert">{{ formError() }}</p> }
           <div class="actions">
@@ -107,7 +111,31 @@
           </div>
         }
         @if (!task.subtasks.length && !confirmingDelete()) {
-          <app-plan-preview [task]="task" />
+          <app-plan-preview [task]="task" (savingChange)="planSaving.set($event)" (saved)="acceptSavedPlan($event)" />
+        }
+        @if (task.subtasks.length && !confirmingDelete()) {
+          <section class="saved-plan" aria-labelledby="saved-plan-heading">
+            <h3 id="saved-plan-heading">Saved plan</h3>
+            <label for="task-progress" class="progress-label">{{ task.progress.completed }} / {{ task.progress.total }} steps complete · {{ task.progress.percent }}%</label>
+            <progress id="task-progress" max="100" [value]="task.progress.percent"></progress>
+            <p class="muted">Check off steps as you finish them. Each change is saved automatically.</p>
+            @if (completing()) { <p role="status">Saving completion…</p> }
+            @for (day of dailyPlan(); track day.day) {
+              <div class="plan-day">
+                <h4>Day {{ day.day }} <span class="muted">· {{ day.minutes }} / {{ task.minutesPerDay }} minutes</span></h4>
+                <ul>
+                  @for (step of day.steps; track step.id) {
+                    <li>
+                      <label class="subtask" [class.complete]="step.completed">
+                        <input type="checkbox" [checked]="step.completed" [disabled]="busy()" (change)="setCompleted(step.id, $event)" [attr.data-subtask-id]="step.id">
+                        <span><strong>{{ step.title }}</strong><small>{{ step.estimatedMinutes }} {{ step.estimatedMinutes === 1 ? 'minute' : 'minutes' }}</small></span>
+                      </label>
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
+          </section>
         }
       } @else {
         <h2 id="detail-heading">Task details</h2>

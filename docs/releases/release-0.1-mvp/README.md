@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress. TFA-001–003's local stack, persistent task CRUD, and editable unsaved Ollama preview are implemented and verified. Plan save and completion still require TFA-004.
+Implemented and locally verified. TFA-001–004 deliver task CRUD, editable Ollama previews, explicit plan acceptance and durable completion tracking. The complete Docker-launched flow passed through reload and Compose stop/start while retaining the database volume.
 
 ## Outcome
 
@@ -23,6 +23,6 @@ One working local demo: create a task, generate and edit an AI plan, save the ac
 | [TFA-001](stories/TFA-001-repository-api-and-data-foundation.md) | Repository, NestJS, PostgreSQL, Prisma | Implemented |
 | [TFA-002](stories/TFA-002-task-crud-and-angular-screen.md) | Task CRUD and Angular screen | Implemented |
 | [TFA-003](stories/TFA-003-structured-ai-plan-preview.md) | Ollama and editable plan preview | Implemented |
-| [TFA-004](stories/TFA-004-save-plan-and-track-progress.md) | Save plan, completion, and MVP verification | Planned |
+| [TFA-004](stories/TFA-004-save-plan-and-track-progress.md) | Save plan, completion, and MVP verification | Implemented |
 
 [Verification record](verification.md) contains actual evidence only.

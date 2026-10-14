@@ -21,6 +21,7 @@ const missing = () => new Prisma.PrismaClientKnownRequestError('Record missing',
 describe('Task CRUD HTTP boundary', () => {
   let app: INestApplication;
   const database = {
+    $transaction: jest.fn(), $queryRaw: jest.fn(),
     task: {
       findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn(),
     },
@@ -36,6 +37,7 @@ describe('Task CRUD HTTP boundary', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
+    database.$transaction.mockImplementation((change) => change(database));
     database.task.findMany.mockResolvedValue([task]);
     database.task.findUnique.mockResolvedValue(task);
     database.task.create.mockResolvedValue(task);
@@ -48,7 +50,10 @@ describe('Task CRUD HTTP boundary', () => {
   it('lists tasks in a deterministic newest-first order', async () => {
     const response = await request(app.getHttpServer()).get('/api/tasks').expect(200);
     expect(response.body[0].id).toBe(id);
-    expect(database.task.findMany).toHaveBeenCalledWith({ orderBy: [{ createdAt: 'desc' }, { id: 'desc' }] });
+    expect(database.task.findMany).toHaveBeenCalledWith({
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], include: { subtasks: { select: { completed: true } } },
+    });
+    expect(response.body[0].progress).toEqual({ total: 0, completed: 0, percent: 0 });
   });
 
   it('reads one task with ordered subtasks', async () => {

@@ -11,7 +11,13 @@ import type { TaskDetail } from './tasks-api.service';
 const task: TaskDetail = {
   id: '4206c355-753b-44ab-852b-818e538ff1cb', title: 'Learn TypeScript', description: null,
   days: 3, minutesPerDay: 30, createdAt: '2026-10-14T12:00:00Z', updatedAt: '2026-10-14T12:00:00Z', subtasks: [],
+  progress: { total: 0, completed: 0, percent: 0 },
 };
+const savedTask: TaskDetail = { ...task, progress: { total: 3, completed: 0, percent: 0 }, subtasks: [
+  { id: '651b04c3-afb5-49e0-827d-a273be3c354e', taskId: task.id, title: 'Syntax', day: 1, order: 0, estimatedMinutes: 15, completed: false },
+  { id: 'second-step', taskId: task.id, title: 'Functions', day: 1, order: 1, estimatedMinutes: 15, completed: false },
+  { id: 'third-step', taskId: task.id, title: 'Practice', day: 2, order: 2, estimatedMinutes: 30, completed: false },
+] };
 
 describe('Task screen', () => {
   let fixture: ComponentFixture<App>;
@@ -34,10 +40,10 @@ describe('Task screen', () => {
     await fixture.whenStable();
   }
 
-  async function select(): Promise<void> {
-    await list([task]);
+  async function select(current: TaskDetail = task): Promise<void> {
+    await list([current]);
     const pending = app.selectTask(task.id);
-    http.expectOne(`/api/tasks/${task.id}`).flush(task);
+    http.expectOne(`/api/tasks/${task.id}`).flush(current);
     await pending;
     await fixture.whenStable();
   }
@@ -166,5 +172,74 @@ describe('Task screen', () => {
     expect(app.tasks()).toHaveLength(1);
     expect(app.selectedTask()?.id).toBe(task.id);
     expect(fixture.nativeElement.textContent).toContain('Something went wrong. Please try again.');
+  });
+
+  it('displays the saved daily plan and releases the parent save state', async () => {
+    await select();
+    app.planSaving.set(true);
+    app.acceptSavedPlan(savedTask);
+    await fixture.whenStable();
+    expect(app.busy()).toBe(false);
+    expect(app.dailyPlan().map((day) => day.minutes)).toEqual([30, 30]);
+    expect(fixture.nativeElement.querySelectorAll('.subtask input')).toHaveLength(3);
+    expect(fixture.nativeElement.querySelector('app-plan-preview')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('0 / 3 steps complete · 0%');
+  });
+
+  it('changes checkbox and list/detail progress only after the server accepts completion', async () => {
+    await select(savedTask);
+    const checkbox = fixture.nativeElement.querySelector('.subtask input') as HTMLInputElement;
+    checkbox.checked = true;
+    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+    const request = http.expectOne(`/api/subtasks/${savedTask.subtasks[0].id}`);
+    expect(request.request.method).toBe('PATCH');
+    expect(request.request.body).toEqual({ completed: true });
+    expect(checkbox.checked).toBe(false);
+    expect(app.selectedTask()?.progress.percent).toBe(0);
+    request.flush({ ...savedTask, progress: { total: 3, completed: 1, percent: 33 }, subtasks: savedTask.subtasks.map((step, index) => ({ ...step, completed: index === 0 })) });
+    await fixture.whenStable();
+    expect(checkbox.checked).toBe(true);
+    expect(app.tasks()[0].progress.percent).toBe(33);
+    expect(app.selectedTask()?.progress.percent).toBe(33);
+    expect(app.busy()).toBe(false);
+  });
+
+  it('keeps persisted completion and enables retry after a failed checkbox update', async () => {
+    await select(savedTask);
+    const checkbox = fixture.nativeElement.querySelector('.subtask input') as HTMLInputElement;
+    checkbox.checked = true;
+    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+    http.expectOne(`/api/subtasks/${savedTask.subtasks[0].id}`).flush({}, { status: 500, statusText: 'Error' });
+    await fixture.whenStable();
+    expect(checkbox.checked).toBe(false);
+    expect(app.selectedTask()?.subtasks[0].completed).toBe(false);
+    expect(app.busy()).toBe(false);
+    expect(fixture.nativeElement.textContent).toContain('Something went wrong. Please try again.');
+  });
+
+  it('can mark a completed step incomplete again', async () => {
+    const completed = { ...savedTask, progress: { total: 3, completed: 1, percent: 33 }, subtasks: savedTask.subtasks.map((step, index) => ({ ...step, completed: index === 0 })) };
+    await select(completed);
+    const checkbox = fixture.nativeElement.querySelector('.subtask input') as HTMLInputElement;
+    checkbox.checked = false;
+    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+    const request = http.expectOne(`/api/subtasks/${savedTask.subtasks[0].id}`);
+    expect(request.request.body).toEqual({ completed: false });
+    request.flush(savedTask);
+    await fixture.whenStable();
+    expect(checkbox.checked).toBe(false);
+    expect(app.tasks()[0].progress.percent).toBe(0);
+  });
+
+  it('locks saved-plan budgets while allowing title/description edits', async () => {
+    await select(savedTask);
+    app.startEdit();
+    expect(app.form.controls.days.disabled).toBe(true);
+    expect(app.form.controls.minutesPerDay.disabled).toBe(true);
+    expect(app.form.controls.title.enabled).toBe(true);
+    app.cancelForm();
+    app.startCreate();
+    expect(app.form.controls.days.enabled).toBe(true);
+    expect(app.form.controls.minutesPerDay.enabled).toBe(true);
   });
 });

@@ -11,6 +11,7 @@ import type { PlanPreview, TaskDetail } from '../tasks-api.service';
 const task: TaskDetail = {
   id: '4206c355-753b-44ab-852b-818e538ff1cb', title: 'Learn TypeScript', description: null,
   days: 2, minutesPerDay: 30, createdAt: '2026-10-14T12:00:00Z', updatedAt: '2026-10-14T12:00:00Z', subtasks: [],
+  progress: { total: 0, completed: 0, percent: 0 },
 };
 const preview: PlanPreview = { subtasks: [
   { title: 'Review syntax', estimatedMinutes: 10, day: 1, order: 0 },
@@ -137,5 +138,72 @@ describe('Unsaved plan preview', () => {
     fixture.destroy();
     await pending;
     expect(request.cancelled).toBe(true);
+  });
+
+  it('saves edited titles/estimates only after explicit confirmation and prevents duplicate requests', async () => {
+    await generate();
+    component.steps.at(0).controls.title.setValue('  My accepted step  ');
+    component.steps.at(0).controls.estimatedMinutes.setValue(5);
+    component.requestSave();
+    http.expectNone(`/api/tasks/${task.id}/plan`);
+    await fixture.whenStable();
+    expect(fixture.nativeElement.textContent).toContain('Confirm and save');
+    const saved: TaskDetail = { ...task, subtasks: preview.subtasks.map((step, order) => ({
+      ...step, id: `saved-${order}`, taskId: task.id, completed: false,
+      ...(order === 0 ? { title: 'My accepted step', estimatedMinutes: 5 } : {}),
+    })), progress: { total: 3, completed: 0, percent: 0 } };
+    let emitted: TaskDetail | undefined;
+    component.saved.subscribe((value) => { emitted = value; });
+    const pending = component.confirmSave();
+    const request = http.expectOne(`/api/tasks/${task.id}/plan`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({ subtasks: [
+      { title: 'My accepted step', estimatedMinutes: 5 },
+      { title: 'Write typed functions', estimatedMinutes: 20 },
+      { title: 'Practice with a program', estimatedMinutes: 30 },
+    ] });
+    await component.confirmSave();
+    http.expectNone(`/api/tasks/${task.id}/plan`);
+    request.flush(saved);
+    await pending;
+    expect(emitted).toEqual(saved);
+    expect(component.saving()).toBe(false);
+  });
+
+  it('keeps edits when confirmation is cancelled and refuses save without confirmation', async () => {
+    await generate();
+    component.steps.at(0).controls.title.setValue('Keep my edit');
+    component.requestSave();
+    component.confirmingSave.set(false);
+    await component.confirmSave();
+    expect(component.steps.at(0).controls.title.value).toBe('Keep my edit');
+    http.expectNone(`/api/tasks/${task.id}/plan`);
+  });
+
+  it('refuses to confirm an invalid or over-budget edited plan', async () => {
+    await generate();
+    component.steps.at(0).controls.title.setValue(' ');
+    component.requestSave();
+    expect(component.confirmingSave()).toBe(false);
+    component.steps.at(0).controls.title.setValue('Valid');
+    component.steps.at(0).controls.estimatedMinutes.setValue(30);
+    component.requestSave();
+    expect(component.confirmingSave()).toBe(false);
+    http.expectNone(`/api/tasks/${task.id}/plan`);
+  });
+
+  it.each([400, 409, 422, 500])('keeps the edited draft and releases busy state after a failed save (%s)', async (status) => {
+    await generate();
+    component.steps.at(0).controls.title.setValue('Keep this draft');
+    const busy: boolean[] = [];
+    component.savingChange.subscribe((value) => busy.push(value));
+    component.requestSave();
+    const pending = component.confirmSave();
+    http.expectOne(`/api/tasks/${task.id}/plan`).flush({ message: 'Save rejected.' }, { status, statusText: 'Error' });
+    await pending;
+    expect(component.steps.at(0).controls.title.value).toBe('Keep this draft');
+    expect(component.error()).toBeTruthy();
+    expect(component.confirmingSave()).toBe(false);
+    expect(busy).toEqual([true, false]);
   });
 });

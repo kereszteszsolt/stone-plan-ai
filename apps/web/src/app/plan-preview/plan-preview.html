@@ -1,12 +1,12 @@
-<section class="preview" aria-labelledby="preview-heading" [attr.aria-busy]="generating()">
+<section class="preview" aria-labelledby="preview-heading" [attr.aria-busy]="generating() || saving()">
   <h3 id="preview-heading">Plan preview</h3>
   <p class="muted">Generate steps with your local model, then review and edit them.</p>
   <div class="actions">
-    <button type="button" class="primary" (click)="generate()" [disabled]="generating()">
+    <button type="button" class="primary" (click)="generate()" [disabled]="generating() || saving() || confirmingSave()">
       {{ generating() ? 'Generating…' : scheduled().length ? 'Generate again' : 'Generate plan' }}
     </button>
     @if (scheduled().length) {
-      <button type="button" (click)="discard()" [disabled]="generating()">Discard preview</button>
+      <button type="button" (click)="discard()" [disabled]="generating() || saving()">Discard preview</button>
     }
   </div>
   @if (generating()) { <p role="status">Waiting for the local model…</p> }
@@ -14,7 +14,7 @@
   @if (scheduled().length) {
     <p class="unsaved" role="status">Unsaved preview — edits stay on this page. Reloading or switching tasks discards it.</p>
     <div [formGroup]="form">
-      <fieldset [disabled]="generating()">
+      <fieldset [disabled]="generating() || saving() || confirmingSave()">
         <div formArrayName="subtasks">
           @for (step of steps.controls; track step; let i = $index) {
             <div class="step" [formGroupName]="i">
@@ -40,6 +40,17 @@
     </div>
     <p [class.error]="overBudget()">Edited estimates: {{ totalMinutes() }} / {{ task().days * task().minutesPerDay }} available minutes.</p>
     @if (overBudget()) { <p class="error" role="alert">These estimates exceed your total time budget. Reduce them or edit the task's budget.</p> }
-    <p class="muted small">Day labels show the generated schedule. Generate again replaces this preview.</p>
+    <p class="muted small">Day labels show the generated schedule. Saving recalculates days from your edited estimates. Generate again replaces this preview.</p>
+    @if (confirmingSave()) {
+      <div class="confirmation">
+        <p>Save these {{ steps.length }} steps? Once saved, the plan and time budget are fixed. You can then mark steps complete.</p>
+        <div class="actions">
+          <button type="button" class="primary" (click)="confirmSave()" [disabled]="saving()">{{ saving() ? 'Saving…' : 'Confirm and save' }}</button>
+          <button type="button" (click)="confirmingSave.set(false)" [disabled]="saving()">Keep editing</button>
+        </div>
+      </div>
+    } @else {
+      <button type="button" class="primary" (click)="requestSave()" [disabled]="generating() || saving() || form.invalid || overBudget()">Save plan</button>
+    }
   }
 </section>

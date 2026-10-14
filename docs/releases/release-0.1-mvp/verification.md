@@ -2,7 +2,7 @@
 
 ## Status
 
-Release 0.1 is in progress. TFA-001–003's local stack, persistent task CRUD and editable unsaved AI preview have been checked. Plan save and completion tracking remain pending TFA-004.
+Release 0.1 MVP is implemented and locally verified. All four stories and the complete Docker UI flow passed, including accepted plans and completion retained after page reload and full Compose stop/start.
 
 ## Story evidence
 
@@ -11,7 +11,7 @@ Release 0.1 is in progress. TFA-001–003's local stack, persistent task CRUD an
 | TFA-001 | API/web builds, 3 HTTP tests, schema/migration checks | Native and Docker shell rendered; Compose health/persistence smoke passed; model smoke not applicable | Implemented |
 | TFA-002 | Both builds; 37 backend HTTP tests and 10 Angular tests; live CRUD and cascade smoke | Browser create/edit/delete with reload; failed-save recovery; 320/390/1200 px and light/dark forms | Implemented |
 | TFA-003 | Both builds; 79 backend tests, including 42 fixed-response/scheduling/preview tests; 21 Angular tests | Real host Ollama through Docker web/API; editable unsaved preview and responsive/error-state smoke | Implemented |
-| TFA-004 | Not run | Not run | Planned |
+| TFA-004 | Both builds; 115 backend tests, including 36 acceptance/progress tests; 33 Angular tests; real PostgreSQL concurrency checks | Complete real-model Docker UI flow, edited plan acceptance/completion, reload and full Compose stop/start preservation | Implemented |
 
 Record only actual commands, relevant results, and blockers after implementation. Mark a story `Implemented` only when its acceptance criteria are checked and supported by evidence.
 
@@ -90,9 +90,35 @@ The first real attempt returned 422 because a step exceeded the daily budget. Th
 
 Light desktop (1200 px), dark mobile (390 px), and light narrow mobile (320 px) previews had every title/estimate input present and no horizontal document overflow. Live screenshots were captured under `/tmp/task-flow-ai-tfa003-I1a2w1/`; desktop/light and mobile/dark images were visually inspected. Chrome reported no page JavaScript errors. These are temporary local browser artifacts, not hosted deployment evidence or committed assets.
 
-README documents native/container URLs, installed-model selection, timeout bounds, the host-gateway probe and private-interface Linux guidance. Nginx's 130-second read timeout exceeds the maximum 120-second provider timeout. The local Ollama server's configuration was left unchanged; the API model client has no automatic cloud fallback or response repair. Generation remains explicit and read-only. TFA-004 plan saving/completion and the full MVP end-to-end flow have not been implemented or claimed.
+README documents native/container URLs, installed-model selection, timeout bounds, the host-gateway probe and private-interface Linux guidance. Nginx's 130-second read timeout exceeds the maximum 120-second provider timeout. The local Ollama server's configuration was left unchanged; the API model client has no automatic cloud fallback or response repair. Generation remains explicit and read-only. At TFA-003 delivery, plan saving/completion and the full MVP end-to-end flow were still pending TFA-004.
 
-The release closes after one successful end-to-end local demo: create task → generate Ollama plan → edit → save → mark complete → reload and verify persistence.
+## TFA-004 evidence — 2026-10-14
+
+Uses the existing WSL/Node.js 24.18.0/npm 11.16.0/Docker/Compose environment. No business entity, Prisma schema/migration, dependency or Ollama installation changed.
+
+| Location | Command | Result |
+| --- | --- | --- |
+| `apps/api` | `npm run build` | Strict TypeScript build and Prisma client generation passed |
+| `apps/api` | `npm test` | 4 suites, 115 tests passed; 36 new acceptance/progress cases cover strict edited inputs, day recalculation, budget/duplicate conflicts, transaction placement, completion set/unset, missing/deleted rows, and list/detail progress |
+| `apps/web` | `npm run build` | Angular production build passed, including the final singular/plural label correction; initial bundle 244.39 kB |
+| `apps/web` | `npm test` | 2 files, 33 tests passed, including explicit confirmation/cancellation, edited-only save payload, duplicate-request guard, failed-save draft retention, daily saved view, completion failure/set/unset and fixed budget controls |
+| Root | `docker compose up --build -d --wait` | Updated API/web images built and the three-service demo started |
+| Root | `docker compose up --build -d --wait web` | Final web label correction rebuilt and served successfully |
+| Root | `sh infra/smoke.sh` | Website/proxy/migration/CRUD checks, real concurrent plan-save and budget-edit protection, completion set/unset/idempotency, title edits preserving plans, cascade deletion and database restart passed |
+| Root | `docker compose up -d --wait` | Applied only the ignored root `.env`'s `OLLAMA_TIMEOUT_MS=120000`, retaining the existing selected model and all other settings |
+| `apps/web` | `CHROME_EXECUTABLE=… LD_LIBRARY_PATH=… npm run test:mvp-smoke` | Real Docker UI create → generate → edit → confirm → save → complete → reload passed; full stack stop/start retained the same accepted steps and completion |
+
+Two simultaneous acceptance requests to the same real PostgreSQL task returned 201 and 409 and left exactly 3 ordered steps. Four simultaneous budget-edit/save checks accepted either the new budget with a rejected plan (200/422), or the plan with a rejected budget change (409/201); none left a plan outside its stored budget. Completion was explicitly set true twice and false once, with matching persisted progress. Invalid/day-assigned input and oversized estimates left no saved steps. Temporary API fixtures were deleted by ID; pre-existing user tasks were preserved.
+
+The browser driver created its task through the real UI and used the current external `qwen3.5:9b` model. Its first call reached the 60-second default and returned `OLLAMA_TIMEOUT` (504), with no plan written. The ignored local API timeout was then raised to the supported 120-second maximum; the next full flow passed with one real generation in that run. The selected model and external server configuration were retained; no cloud fallback or automatic model switching occurred.
+
+The successful flow produced **4 steps**. The driver edited the first title and all four estimates to 1 minute before confirming, so the accepted schedule had all steps on day 1. A cancelled confirmation made no save request. One controlled failed-save response preserved the edited draft; a real retry returned 201. One controlled failed-completion response kept the prior checkbox state; a real retry saved one completed step and **25% progress**. Editing the task description after acceptance kept its saved steps/progress and exposed disabled time-budget fields.
+
+Page reload and `docker compose stop` followed by `docker compose up -d --wait` preserved the same task, accepted step IDs/fields, completion flags and progress. The PostgreSQL volume was retained. The browser removed only its own task after verification. Chrome reported no page JavaScript errors.
+
+Saved-plan screenshots at 1200 px/light, 390 px/dark and 320 px/light were captured under `/tmp/task-flow-ai-tfa004-lExGvX/`; every checkbox remained present and there was no horizontal document overflow. Desktop/light and mobile/dark were visually inspected; a final small singular/plural minute-label correction followed that review. Screenshots are temporary local artifacts. README documents explicit acceptance, locked saved budgets, count-based progress, offline Ollama recovery, slow-model timeout configuration and the stack-restarting smoke command.
+
+One initial Angular save test accidentally exceeded its fixture's 60-minute total; the UI correctly blocked confirmation. Correcting that test estimate yielded the final 33/33 result. No targeted test failure remains. This closes the required Release 0.1 local demo flow; optional TFA-005 remains Planned and separate.
 
 ## Optional post-MVP story (not part of Release 0.1)
 

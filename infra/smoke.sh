@@ -13,6 +13,7 @@ curl --fail --silent --show-error "$web_url/api/tasks" | docker compose exec -T 
   'const list=JSON.parse(require("node:fs").readFileSync(0,"utf8")); if(!Array.isArray(list)) process.exit(1)'
 docker compose exec -T api npm run prisma:status
 docker compose exec -T api node < apps/api/test/tasks-smoke.cjs
+docker compose exec -T api node < apps/api/test/plan-save-smoke.cjs
 
 fixture_id="$(docker compose exec -T api node -e 'process.stdout.write(require("node:crypto").randomUUID())')"
 cleanup() {

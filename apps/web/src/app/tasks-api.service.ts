@@ -16,6 +16,7 @@ export interface Task extends TaskInput {
   id: string;
   createdAt: string;
   updatedAt: string;
+  progress: { total: number; completed: number; percent: number };
 }
 
 export interface Subtask {
@@ -70,6 +71,14 @@ export class TasksApiService {
 
   generatePreview(id: string): Observable<PlanPreview> {
     return this.http.post<PlanPreview>(`${this.url}/${id}/plan-preview`, {});
+  }
+
+  savePlan(id: string, subtasks: { title: string; estimatedMinutes: number }[]): Observable<TaskDetail> {
+    return this.http.post<TaskDetail>(`${this.url}/${id}/plan`, { subtasks });
+  }
+
+  setCompleted(id: string, completed: boolean): Observable<TaskDetail> {
+    return this.http.patch<TaskDetail>(`/api/subtasks/${id}`, { completed });
   }
 
   errorMessage(error: unknown): string {

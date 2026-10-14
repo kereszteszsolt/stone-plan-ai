@@ -12,6 +12,8 @@ button:disabled { opacity: .55; cursor: default; }
 button.primary { background: var(--accent); border-color: var(--accent); color: white; }
 button.primary:hover:not(:disabled) { background: var(--accent); filter: brightness(.92); }
 .unsaved { padding: .75rem; border-radius: .4rem; background: var(--surface); font-size: .9rem; }
+.confirmation { padding: 1rem; border: 1px solid var(--border); border-radius: .5rem; background: var(--surface); }
+.confirmation p { margin-top: 0; }
 fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
 .step { padding: 1rem 0; border-bottom: 1px solid var(--border); }
 .step-caption { margin: 0 0 .75rem; font-size: .85rem; font-weight: 600; color: var(--muted); }

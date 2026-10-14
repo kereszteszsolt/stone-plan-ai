@@ -5,7 +5,7 @@ import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal, type OnInit } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators, type AbstractControl, type ValidationErrors } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
-import { TasksApiService, type Task, type TaskDetail } from './tasks-api.service';
+import { TasksApiService, type Subtask, type Task, type TaskDetail } from './tasks-api.service';
 import { PlanPreviewComponent } from './plan-preview/plan-preview';
 
 function integer(control: AbstractControl): ValidationErrors | null {
@@ -32,13 +32,25 @@ export class App implements OnInit {
   readonly detailLoading = signal(false);
   readonly saving = signal(false);
   readonly deleting = signal(false);
+  readonly planSaving = signal(false);
+  readonly completing = signal<string | null>(null);
   readonly listError = signal('');
   readonly detailError = signal('');
   readonly formError = signal('');
   readonly notice = signal('');
   readonly mode = signal<'idle' | 'create' | 'edit'>('idle');
   readonly confirmingDelete = signal(false);
-  readonly busy = computed(() => this.saving() || this.deleting());
+  readonly busy = computed(() => this.saving() || this.deleting() || this.planSaving() || !!this.completing());
+  readonly dailyPlan = computed(() => {
+    const days = new Map<number, { day: number; minutes: number; steps: Subtask[] }>();
+    for (const step of this.selectedTask()?.subtasks ?? []) {
+      const group = days.get(step.day) ?? { day: step.day, minutes: 0, steps: [] };
+      group.minutes += step.estimatedMinutes;
+      group.steps.push(step);
+      days.set(step.day, group);
+    }
+    return [...days.values()];
+  });
   readonly form = this.formBuilder.group({
     title: ['', [Validators.required, Validators.maxLength(160)]],
     description: ['', Validators.maxLength(2000)],
@@ -112,6 +124,10 @@ export class App implements OnInit {
       days: task.days,
       minutesPerDay: task.minutesPerDay,
     });
+    if (task.subtasks.length) {
+      this.form.controls.days.disable();
+      this.form.controls.minutesPerDay.disable();
+    }
     this.formError.set('');
     this.notice.set('');
     this.confirmingDelete.set(false);
@@ -122,6 +138,7 @@ export class App implements OnInit {
     if (this.busy()) return;
     this.mode.set('idle');
     this.formError.set('');
+    this.form.enable();
   }
 
   async saveTask(): Promise<void> {
@@ -140,11 +157,11 @@ export class App implements OnInit {
     this.notice.set('');
     try {
       const task = await firstValueFrom(editing && id ? this.api.update(id, input) : this.api.create(input));
-      this.tasks.update((tasks) => [task, ...tasks.filter((item) => item.id !== task.id)]
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id)));
+      this.storeTask(task);
       this.selectedId.set(task.id);
       this.selectedTask.set(task);
       this.mode.set('idle');
+      this.form.enable();
       this.notice.set(editing ? 'Task updated.' : 'Task created.');
     } catch (error) {
       this.formError.set(this.api.errorMessage(error));
@@ -171,6 +188,39 @@ export class App implements OnInit {
     } finally {
       this.deleting.set(false);
     }
+  }
+
+  acceptSavedPlan(task: TaskDetail): void {
+    this.planSaving.set(false);
+    this.storeTask(task);
+    if (this.selectedId() === task.id) this.selectedTask.set(task);
+    this.notice.set('Plan saved.');
+  }
+
+  async setCompleted(id: string, event: Event): Promise<void> {
+    const checkbox = event.target as HTMLInputElement;
+    const step = this.selectedTask()?.subtasks.find((item) => item.id === id);
+    const completed = checkbox.checked;
+    if (step) checkbox.checked = step.completed;
+    if (!step || this.busy()) return;
+    this.completing.set(id);
+    this.detailError.set('');
+    this.notice.set('');
+    try {
+      const task = await firstValueFrom(this.api.setCompleted(id, completed));
+      this.storeTask(task);
+      if (this.selectedId() === task.id) this.selectedTask.set(task);
+      this.notice.set(completed ? 'Step completed.' : 'Step marked incomplete.');
+    } catch (error) {
+      this.detailError.set(this.api.errorMessage(error));
+    } finally {
+      this.completing.set(null);
+    }
+  }
+
+  private storeTask(task: TaskDetail): void {
+    this.tasks.update((tasks) => [task, ...tasks.filter((item) => item.id !== task.id)]
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id)));
   }
 
 }

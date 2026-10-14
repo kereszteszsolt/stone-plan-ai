@@ -12,7 +12,8 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test --watch=false",
     "test:smoke": "node test/crud-smoke.cjs",
-    "test:preview-smoke": "node test/preview-smoke.cjs"
+    "test:preview-smoke": "node test/preview-smoke.cjs",
+    "test:mvp-smoke": "node test/mvp-smoke.cjs"
   },
   "dependencies": {
     "@angular/common": "^22.2.2",

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Keresztes Zsolt <https://kereszteszsolt.hu>
 // SPDX-License-Identifier: Apache-2.0
 
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, input, signal, type OnChanges } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, input, output, signal, type OnChanges } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators, type FormControl, type FormGroup } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
@@ -24,7 +24,11 @@ export class PlanPreviewComponent implements OnChanges {
   private generationVersion = 0;
 
   readonly task = input.required<TaskDetail>();
+  readonly saved = output<TaskDetail>();
+  readonly savingChange = output<boolean>();
   readonly generating = signal(false);
+  readonly saving = signal(false);
+  readonly confirmingSave = signal(false);
   readonly error = signal('');
   readonly scheduled = signal<PlannedSubtask[]>([]);
   readonly steps = this.builder.array<StepForm>([]);
@@ -42,7 +46,7 @@ export class PlanPreviewComponent implements OnChanges {
   }
 
   async generate(): Promise<void> {
-    if (this.generating()) return;
+    if (this.generating() || this.saving() || this.confirmingSave()) return;
     const task = this.task();
     const version = ++this.generationVersion;
     this.generating.set(true);
@@ -68,9 +72,39 @@ export class PlanPreviewComponent implements OnChanges {
   }
 
   discard(): void {
-    if (this.generating()) return;
+    if (this.generating() || this.saving()) return;
     this.steps.clear();
     this.scheduled.set([]);
     this.error.set('');
+    this.confirmingSave.set(false);
+  }
+
+  requestSave(): void {
+    if (this.generating() || this.saving() || !this.steps.length) return;
+    this.form.markAllAsTouched();
+    if (this.form.invalid || this.overBudget()) return;
+    this.error.set('');
+    this.confirmingSave.set(true);
+  }
+
+  async confirmSave(): Promise<void> {
+    if (!this.confirmingSave() || this.saving() || this.generating() || this.form.invalid || this.overBudget()) return;
+    const version = this.generationVersion;
+    this.saving.set(true);
+    this.savingChange.emit(true);
+    this.error.set('');
+    try {
+      const subtasks = this.steps.getRawValue().map((step) => ({ ...step, title: step.title.trim() }));
+      const task = await firstValueFrom(this.api.savePlan(this.task().id, subtasks).pipe(takeUntilDestroyed(this.destroyRef)));
+      if (!this.destroyRef.destroyed && version === this.generationVersion) this.saved.emit(task);
+    } catch (error) {
+      if (!this.destroyRef.destroyed && version === this.generationVersion) this.error.set(this.api.errorMessage(error));
+    } finally {
+      if (!this.destroyRef.destroyed) {
+        this.saving.set(false);
+        this.confirmingSave.set(false);
+        this.savingChange.emit(false);
+      }
+    }
   }
 }
