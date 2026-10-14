@@ -1,0 +1,11 @@
+.git
+.agents
+.codex
+.env
+.env.*
+**/node_modules
+**/dist
+**/.angular
+**/coverage
+apps/api
+docs

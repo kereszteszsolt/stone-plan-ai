@@ -1,6 +1,8 @@
-# Architecture — Release 0.1 (planned)
+# Architecture — Release 0.1
 
 The goal is a tiny, local-first, single-user full-stack application. For the demo, **Angular (Nginx), NestJS and PostgreSQL run together in Docker Compose**. An existing Ollama installation runs separately on the host; Angular and NestJS can still run natively during development.
+
+TFA-001 implements the local stack, the Task/Subtask schema and migration, and `/api/health`. The task and AI flows below remain planned for TFA-002–004.
 
 ```mermaid
 flowchart TD

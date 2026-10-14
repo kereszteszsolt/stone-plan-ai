@@ -4,7 +4,7 @@
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-D22128?style=flat-square&labelColor=2B3137&logo=apache&logoColor=white)](LICENSE)
 
-**Status: planning baseline.** This repository currently contains the documentation and AI-assisted development instructions for Release 0.1. The NestJS API, Angular frontend, database integration, and AI workflow are **not yet implemented**.
+**Status: Release 0.1 in progress.** TFA-001 supplies the NestJS health endpoint, a standalone Angular shell, the Prisma schema and initial migration, and a local Docker Compose stack. Task CRUD, plan generation, plan saving, and completion tracking are still planned in TFA-002–004.
 
 Task Flow AI is a small, local-first, single-user task planner. It will turn one goal into an editable AI-generated plan, assign subtasks to a limited number of days, save the accepted plan, and track progress.
 
@@ -22,7 +22,7 @@ Tasks can also be listed, edited, and deleted. The application has no user accou
 
 **Not in the MVP:** authentication, multiple users, project hierarchy, RAG, embeddings, tool calling, MCP, multi-agent orchestration, cloud-provider fallback, calendar sync, realtime messaging, and background jobs.
 
-## Planned technology stack
+## Technology stack
 
 | Area | Technology | Purpose |
 | --- | --- | --- |
@@ -34,21 +34,72 @@ Tasks can also be listed, edited, and deleted. The application has no user accou
 | Infrastructure | Docker Compose, Nginx | Containerized Angular, NestJS, and PostgreSQL; one localhost entry point |
 | Tests | Jest + Angular unit tests | Focused service and UI checks |
 
+The AI rows and Angular unit tests describe later MVP stories. TFA-001 verifies the API foundation, builds, database migration, and local stack.
+
 This is a **plain monorepo** (one Git repository with `apps/web` and `apps/api`), not an Nx/Turborepo-managed workspace. Each app has its own normal tooling. Docker Compose coordinates their containers; it does not replace or require a monorepo framework.
 
-## Planned local deployment
+## Local deployment
 
-For the **Docker-run demo**, one `docker compose up --build` command will start:
+Prerequisites: Docker with Compose. From the repository root:
+
+```sh
+cp .env.example .env
+# Choose your local PostgreSQL password in .env before starting.
+docker compose up --build
+```
+
+Use a URL-safe password because Compose includes it in the database connection URL. Open **http://localhost:8080**. The current Angular shell displays the application name and tagline; **http://localhost:8080/api/health** returns `{"status":"ok"}`.
+
+The command starts:
 
 - `web`: Angular built as static files and served by Nginx at `http://localhost:8080`; Nginx forwards `/api/*` to the `api` service.
 - `api`: NestJS backend, accessible internally to the `web` container, with a database connection to `db:5432`.
 - `db`: PostgreSQL with a dedicated named volume for persisted database files.
 
-These containers share a **Compose network**, *not* a shared data volume. The API and web images do not need persistent data volumes. **Ollama remains a separate host-installed HTTP service** (not downloaded or run by Compose); the container targets the host via `host.docker.internal:11434` where supported. Linux may need the documented `host-gateway` mapping and an Ollama listen-address adjustment, limited to trusted local access. Development with native Angular/NestJS commands remains optional.
+Compose waits for PostgreSQL readiness. Before listening, the API runs `prisma migrate deploy`; the website waits for the API health check. Only Nginx has a published port, bound to `127.0.0.1`. Change `WEB_PORT` in `.env` if needed.
+
+The containers use Compose's default network and one named `postgres_data` volume. `docker compose down` removes the containers while keeping database data. `docker compose down --volumes` deletes that data.
+
+**Ollama remains a separate host-installed HTTP service**, configured with `OLLAMA_BASE_URL` and `OLLAMA_MODEL`. The API container has a `host.docker.internal:host-gateway` mapping for Linux. TFA-001 makes no Ollama calls, so an absent model server does not prevent startup. When TFA-003 implements generation, the host URL must be reachable from the container; any host listen-address adjustment should remain limited to trusted local access.
 
 A hosted OpenRouter alternative has its own **optional post-MVP story, TFA-005**, but **is not part of Release 0.1 and is not implemented yet**. Ollama remains the default; the browser never calls an AI provider directly.
 
-Implementation and verified launch commands will be documented **after the owning stories are implemented**. This repository remains a planning baseline, not a runnable app.
+## Native development
+
+Use Node.js **24 LTS, at least 24.15.0**, and npm. Each application has its own `package.json` and lock file; no root workspace tooling is required.
+
+To expose only the demo database to native development processes:
+
+```sh
+docker compose -f compose.yaml -f infra/compose.dev.yaml up -d --wait db
+```
+
+This optional override publishes PostgreSQL to `127.0.0.1:5432`. The regular demo does not publish a database port.
+
+In `apps/api`, copy `.env.example` to `.env` and match its database credentials to the root `.env`, then run:
+
+```sh
+npm ci
+npm run prisma:migrate
+npm run start:dev
+```
+
+The native API is at **http://localhost:3000/api/health**. In a second terminal, from `apps/web`:
+
+```sh
+npm ci
+npm start
+```
+
+Open **http://localhost:4200**. Angular's development proxy forwards relative `/api/*` requests to the native API. The web app does not contain database or provider credentials.
+
+## Checks
+
+From `apps/api`: `npm run prisma:validate`, `npm run build`, and `npm test`. From `apps/web`: `npm run build`.
+
+For the running Docker demo, run `sh infra/smoke.sh` from the repository root. It checks the website and Nginx health proxy, migration status, Prisma defaults and relational constraints, database restart persistence, and cascading deletion. It restarts only this project's database and removes its own temporary test task. If using another web port, set `TASK_FLOW_SMOKE_URL=http://localhost:YOUR_PORT`.
+
+Verified commands and limits are recorded in the [verification record](docs/releases/release-0.1-mvp/verification.md).
 
 ## Documentation
 

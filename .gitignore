@@ -6,6 +6,7 @@ coverage/
 .nx/
 .turbo/
 *.tsbuildinfo
+apps/api/src/generated/
 
 # Secrets and local config
 .env

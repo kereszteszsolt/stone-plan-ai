@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned. Documentation baseline only; no application code is implemented yet.
+In progress. TFA-001's local stack and API/data foundation are implemented and verified. The task and AI demo still requires TFA-002–004.
 
 ## Outcome
 
@@ -20,7 +20,7 @@ One working local demo: create a task, generate and edit an AI plan, save the ac
 
 | Story | Scope | Status |
 | --- | --- | --- |
-| [TFA-001](stories/TFA-001-repository-api-and-data-foundation.md) | Repository, NestJS, PostgreSQL, Prisma | Planned |
+| [TFA-001](stories/TFA-001-repository-api-and-data-foundation.md) | Repository, NestJS, PostgreSQL, Prisma | Implemented |
 | [TFA-002](stories/TFA-002-task-crud-and-angular-screen.md) | Task CRUD and Angular screen | Planned |
 | [TFA-003](stories/TFA-003-structured-ai-plan-preview.md) | Ollama and editable plan preview | Planned |
 | [TFA-004](stories/TFA-004-save-plan-and-track-progress.md) | Save plan, completion, and MVP verification | Planned |
