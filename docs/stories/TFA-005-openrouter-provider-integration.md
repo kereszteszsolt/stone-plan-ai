@@ -1,0 +1,41 @@
+# TFA-005: Optional OpenRouter provider integration
+
+## Status
+
+Planned — optional, post-MVP; not part of Release 0.1 and not assigned to a new release.
+
+## User story
+
+As a user, I want to generate the same task plan through OpenRouter when I prefer a hosted model over local Ollama.
+
+## Goal
+
+Add one backend-only OpenRouter option to the existing plan preview flow, while keeping Ollama as the default and preserving the small demo architecture.
+
+## Dependencies
+
+`TFA-004` implemented and verified. Start this story only after explicit user approval; do not change Release 0.1 acceptance criteria.
+
+## Acceptance criteria
+
+- [ ] `AI_PROVIDER=ollama|openrouter` selects the plan-generation provider from the NestJS environment; omitted value defaults to `ollama`. Invalid values fail clearly, without silently switching providers.
+- [ ] `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, and optionally `OPENROUTER_BASE_URL` (default `https://openrouter.ai/api/v1`) are documented in `.env.example` and README. Required values are checked when OpenRouter is selected, without requiring them for Ollama mode.
+- [ ] NestJS sends a server-side authenticated request to OpenRouter `POST /chat/completions` using a configured model that supports `response_format: { type: "json_schema", ... }`. Request strict JSON Schema output and require compatible provider parameters rather than accepting silently ignored schema requirements.
+- [ ] Both providers produce the **same existing** Zod-validated subtask proposal, with the same prompt constraints, deterministic day assignment, time-budget rules, and unsaved preview behavior.
+- [ ] The existing `POST /api/tasks/:id/plan-preview` endpoint and Angular UI work unchanged for both providers; no provider selector UI, schema migration, additional persistence, or new Compose service is introduced.
+- [ ] Handle missing credentials, unsupported model/structured-output responses, 401/403, rate limits, provider outages, timeouts, and invalid model JSON with helpful, non-sensitive API/UI errors; never log, echo, or ship the API key to the browser.
+- [ ] Focused mocked API tests cover provider selection, a valid OpenRouter response, invalid output, representative HTTP failures, and no-regression Ollama behavior; default automated tests do **not** make billable external API calls.
+- [ ] `docker compose up --build` still starts `web`, `api`, and `db` with Ollama as the default; README documents how to run OpenRouter mode using backend environment variables, including possible usage charges. If the user provides credentials and approves a live request, record one real OpenRouter smoke test; otherwise clearly mark that smoke test as not run.
+- [ ] Update this story's verification evidence only with commands actually executed and their outcomes; do not mark the OpenRouter integration as delivered while it remains documentation-only.
+
+## Out of scope
+
+No OpenAI/other direct-provider SDKs, LangChain, agent workflows, tool calling, automatic cloud fallback, multi-provider routing, model selection UI, user accounts, pricing dashboard, Dockerized Ollama, or further release planning.
+
+## Verification evidence
+
+Not run. This story is planned only. Add actual test commands, results, and live-provider smoke status here during implementation. Update the [separate optional post-MVP status row](../releases/release-0.1-mvp/verification.md) without affecting Release 0.1 verification.
+
+## Reference
+
+[OpenRouter: structured outputs](https://openrouter.ai/docs/guides/features/structured-outputs) — support depends on the chosen model/provider endpoint.

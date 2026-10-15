@@ -1,0 +1,39 @@
+/* SPDX-FileCopyrightText: 2026 Keresztes Zsolt <https://kereszteszsolt.hu> */
+/* SPDX-License-Identifier: Apache-2.0 */
+
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, sans-serif;
+  --text: #202737;
+  --muted: #596579;
+  --panel: #fff;
+  --surface: #f1f4fa;
+  --border: #d5dce7;
+  --accent: #4052c9;
+  --danger: #b52f3e;
+  --success: #236743;
+  --focus: #8492ed;
+  background: #f6f8fc;
+  color: var(--text);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #edf1fa;
+    --muted: #adb8ca;
+    --panel: #1b2230;
+    --surface: #252f42;
+    --border: #3a465b;
+    --accent: #5266dc;
+    --danger: #f47d8b;
+    --success: #8bd5ac;
+    --focus: #a1afff;
+    background: #121824;
+  }
+}

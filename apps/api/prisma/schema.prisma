@@ -1,0 +1,37 @@
+// SPDX-FileCopyrightText: 2026 Keresztes Zsolt <https://kereszteszsolt.hu>
+// SPDX-License-Identifier: Apache-2.0
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+  importFileExtension = ""
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Task {
+  id            String    @id @default(uuid()) @db.Uuid
+  title         String
+  description   String?
+  days          Int
+  minutesPerDay Int
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  subtasks      Subtask[]
+}
+
+model Subtask {
+  id               String  @id @default(uuid()) @db.Uuid
+  taskId           String  @db.Uuid
+  title            String
+  day              Int
+  order            Int
+  estimatedMinutes Int
+  completed        Boolean @default(false)
+  task             Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, order])
+}
