@@ -1,6 +1,6 @@
 <section class="preview" aria-labelledby="preview-heading" [attr.aria-busy]="generating() || saving()">
   <h3 id="preview-heading">Plan preview</h3>
-  <p class="muted">Generate steps with your local model, then review and edit them.</p>
+  <p class="muted">Generate steps, then review and edit them.</p>
   <div class="actions">
     <button type="button" class="primary" (click)="generate()" [disabled]="generating() || saving() || confirmingSave()">
       {{ generating() ? 'Generating…' : scheduled().length ? 'Generate again' : 'Generate plan' }}
@@ -9,7 +9,7 @@
       <button type="button" (click)="discard()" [disabled]="generating() || saving()">Discard preview</button>
     }
   </div>
-  @if (generating()) { <p role="status">Waiting for the local model…</p> }
+  @if (generating()) { <p role="status">Waiting for the model…</p> }
   @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
   @if (scheduled().length) {
     <p class="unsaved" role="status">Unsaved preview — edits stay on this page. Reloading or switching tasks discards it.</p>

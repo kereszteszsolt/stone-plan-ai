@@ -18,7 +18,7 @@ const steps = [
   { title: 'Write typed functions', estimatedMinutes: 20 },
   { title: 'Practice with a small program', estimatedMinutes: 30 },
 ];
-const configuredKeys = ['OLLAMA_BASE_URL', 'OLLAMA_MODEL', 'OLLAMA_TIMEOUT_MS'] as const;
+const configuredKeys = ['AI_PROVIDER', 'OLLAMA_BASE_URL', 'OLLAMA_MODEL', 'OLLAMA_TIMEOUT_MS', 'OPENROUTER_API_KEY', 'OPENROUTER_MODEL'] as const;
 const originalEnvironment = Object.fromEntries(configuredKeys.map((key) => [key, process.env[key]]));
 
 function reply(subtasks: unknown = steps): Response {
@@ -26,6 +26,9 @@ function reply(subtasks: unknown = steps): Response {
 }
 
 beforeEach(() => {
+  delete process.env['AI_PROVIDER'];
+  delete process.env['OPENROUTER_API_KEY'];
+  delete process.env['OPENROUTER_MODEL'];
   process.env['OLLAMA_BASE_URL'] = 'http://ollama.local:11434';
   process.env['OLLAMA_MODEL'] = 'qwen3:0.6b';
   process.env['OLLAMA_TIMEOUT_MS'] = '1000';
@@ -173,12 +176,53 @@ describe('Plan preview HTTP boundary', () => {
   beforeEach(() => { jest.resetAllMocks(); database.task.findUnique.mockResolvedValue(task); });
   afterAll(async () => { await app.close(); });
 
-  it('returns a scheduled preview without writing tasks or subtasks', async () => {
-    jest.spyOn(globalThis, 'fetch').mockResolvedValue(reply());
+  it.each([undefined, 'ollama', 'openrouter'])('returns the same unsaved schedule with provider %s', async (provider) => {
+    if (provider) process.env['AI_PROVIDER'] = provider;
+    process.env['OPENROUTER_API_KEY'] = 'test-backend-key';
+    process.env['OPENROUTER_MODEL'] = 'test/model';
+    const fetchMock = jest.spyOn(globalThis, 'fetch').mockResolvedValue(provider === 'openrouter'
+      ? new Response(JSON.stringify({ choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: JSON.stringify({ subtasks: steps }) } }] }))
+      : reply());
     const response = await request(app.getHttpServer()).post(`/api/tasks/${id}/plan-preview`).send({}).expect(200);
-    expect(response.body.subtasks.map((step: { day: number }) => step.day)).toEqual([1, 1, 2]);
+    expect(response.body).toEqual({ subtasks: steps.map((step, order) => ({ ...step, day: order < 2 ? 1 : 2, order })) });
+    expect(String(fetchMock.mock.calls[0][0])).toContain(provider === 'openrouter' ? '/chat/completions' : '/api/chat');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(database.task.create).not.toHaveBeenCalled();
     expect(database.task.update).not.toHaveBeenCalled();
+    expect(database.subtask.create).not.toHaveBeenCalled();
+  });
+
+  it.each(['', 'automatic', 'OLLAMA', 'openrouter '])('rejects invalid provider %s without contacting either model', async (provider) => {
+    process.env['AI_PROVIDER'] = provider;
+    const fetchMock = jest.spyOn(globalThis, 'fetch');
+    const response = await request(app.getHttpServer()).post(`/api/tasks/${id}/plan-preview`).expect(503);
+    expect(response.body.code).toBe('AI_PROVIDER_NOT_CONFIGURED');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('generates with default Ollama without OpenRouter credentials', async () => {
+    const fetchMock = jest.spyOn(globalThis, 'fetch').mockResolvedValue(reply());
+    await request(app.getHttpServer()).post(`/api/tasks/${id}/plan-preview`).expect(200);
+    expect(String(fetchMock.mock.calls[0][0])).toContain('/api/chat');
+  });
+
+  it('does not fall back to Ollama when OpenRouter configuration is missing', async () => {
+    process.env['AI_PROVIDER'] = 'openrouter';
+    const fetchMock = jest.spyOn(globalThis, 'fetch');
+    const response = await request(app.getHttpServer()).post(`/api/tasks/${id}/plan-preview`).expect(503);
+    expect(response.body.code).toBe('OPENROUTER_NOT_CONFIGURED');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('returns a safe OpenRouter failure without falling back or saving', async () => {
+    process.env['AI_PROVIDER'] = 'openrouter';
+    process.env['OPENROUTER_API_KEY'] = 'private-backend-key';
+    process.env['OPENROUTER_MODEL'] = 'test/model';
+    const fetchMock = jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('private-backend-key and private provider details', { status: 401 }));
+    const response = await request(app.getHttpServer()).post(`/api/tasks/${id}/plan-preview`).expect(503);
+    expect(response.body.code).toBe('OPENROUTER_ACCESS_DENIED');
+    expect(JSON.stringify(response.body)).not.toContain('private');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(database.subtask.create).not.toHaveBeenCalled();
   });
 
@@ -208,8 +252,14 @@ describe('Plan preview HTTP boundary', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('returns 422 for a valid proposal that exceeds the daily budget', async () => {
-    jest.spyOn(globalThis, 'fetch').mockResolvedValue(reply(steps.map((step) => ({ ...step, estimatedMinutes: 30 }))));
+  it.each(['ollama', 'openrouter'])('enforces the same daily budget with %s', async (provider) => {
+    process.env['AI_PROVIDER'] = provider;
+    process.env['OPENROUTER_API_KEY'] = 'test-backend-key';
+    process.env['OPENROUTER_MODEL'] = 'test/model';
+    const subtasks = steps.map((step) => ({ ...step, estimatedMinutes: 30 }));
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue(provider === 'openrouter'
+      ? new Response(JSON.stringify({ choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: JSON.stringify({ subtasks }) } }] }))
+      : reply(subtasks));
     const response = await request(app.getHttpServer()).post(`/api/tasks/${id}/plan-preview`).expect(422);
     expect(response.body.code).toBe('PLAN_EXCEEDS_BUDGET');
     expect(database.subtask.create).not.toHaveBeenCalled();

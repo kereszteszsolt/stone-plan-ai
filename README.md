@@ -29,7 +29,7 @@ Tasks can also be listed, edited, and deleted. The application has no user accou
 | Frontend | Angular, TypeScript, Signals | Single-page task and plan UI |
 | Backend | NestJS, TypeScript | REST API and application logic |
 | Database | PostgreSQL, Prisma | Durable tasks and subtasks |
-| AI | Ollama | Locally hosted plan generation |
+| AI | Ollama (default), optional OpenRouter | Explicit backend provider selection |
 | AI output | JSON schema + Zod | Validate structured plan proposals |
 | Infrastructure | Docker Compose, Nginx | Containerized Angular, NestJS, and PostgreSQL; one localhost entry point |
 | Tests | Jest + Angular/Vitest | Focused API and UI checks |
@@ -62,7 +62,7 @@ The containers use Compose's default network and one named `postgres_data` volum
 
 **Ollama runs separately from the demo**, configured with `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, and `OLLAMA_TIMEOUT_MS`. Compose does not install a model or start Ollama. Task CRUD starts even when Ollama is unavailable; only an explicit **Generate plan** request contacts the model. The browser calls NestJS through `/api`.
 
-The [planned Release 0.2](docs/releases/release-0.2-ai-provider-observability/README.md) contains **TFA-005 (OpenRouter)** and **TFA-006 (basic LLM call diagnostics)**. Neither is implemented yet. Ollama remains the default, no cloud fallback occurs, and the browser never calls an AI provider directly.
+Release 0.2 is in progress: **TFA-005 (OpenRouter)** adds the optional backend provider described below; **TFA-006 (basic LLM call diagnostics)** remains planned. See the [release map](docs/releases/release-0.2-ai-provider-observability/README.md) and [verification record](docs/releases/release-0.2-ai-provider-observability/verification.md) for checks and limits. Ollama remains the default, no cloud fallback occurs, and the browser never calls an AI provider directly.
 
 ## Ollama plan preview
 
@@ -85,6 +85,28 @@ docker compose exec -T api node -e "fetch('http://host.docker.internal:11434/api
 On native Linux, an Ollama server bound only to loopback may not accept container connections. Inspect `docker compose exec -T api getent hosts host.docker.internal`, then, if needed, configure the external Ollama service's `OLLAMA_HOST` to that **private host interface** at port 11434 and limit access to trusted local clients. Match the native API URL if changing that address. Ollama's [server configuration instructions](https://docs.ollama.com/faq) describe how to set the service environment. The local verification used an existing reachable server and did not change its configuration.
 
 If the host model is not running, start your existing Ollama service, check the configured URL and installed model name, and retry **Generate plan**. The application shows an offline/timeout error without creating subtasks. Task CRUD, saved plans and completion tracking work without Ollama.
+
+## Optional OpenRouter plan preview
+
+`AI_PROVIDER` accepts exactly `ollama` or `openrouter`; omitting it selects Ollama. An empty or unsupported value returns a configuration error when generating. Provider configuration is checked on generation, so task CRUD and saved plans remain available without a configured model. Ollama mode does not require any OpenRouter credentials.
+
+To opt in, set these backend variables in the root `.env` for Compose, or in `apps/api/.env` for native development:
+
+```dotenv
+AI_PROVIDER=openrouter
+OPENROUTER_API_KEY=replace-with-your-private-api-key
+OPENROUTER_MODEL=replace-with-a-compatible-model-id
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+OPENROUTER_TIMEOUT_MS=60000
+```
+
+Replace the key and model placeholders. Choose an explicit model ID whose endpoint supports [OpenRouter JSON Schema structured outputs](https://openrouter.ai/docs/guides/features/structured-outputs). The backend sends `response_format: { type: "json_schema", json_schema: { strict: true, ... } }` with `provider.require_parameters: true` and `provider.allow_fallbacks: false`. Unsupported endpoints fail instead of silently dropping schema requirements. There is one request per generation and no automatic retries, repair, model switch, or fallback to Ollama.
+
+Apply Compose settings with `docker compose up --build -d --wait`, or restart the native API. The web/API/database services and PostgreSQL volume stay the same. `OPENROUTER_BASE_URL` is optional and defaults to the URL above; a custom HTTP(S) base URL receives the backend authorization header and task data. Redirects are rejected. `OPENROUTER_TIMEOUT_MS` accepts integers from 1000 to 120000 and covers the response body as well as the initial request; responses are capped at 64 KiB.
+
+**OpenRouter generation sends the selected task's title, description, and time budget to a hosted provider and may incur usage charges.** Keep the key in backend environment variables, never in Angular settings or Git. The API returns fixed error messages for missing configuration, denied access, insufficient credits, unsupported structured output, rate limits, outages, timeouts, and invalid JSON; provider responses and credentials are not returned or logged.
+
+The existing **Generate plan → review/edit → Save plan → Confirm and save** flow works with either provider. Both use the same prompt, strict Zod proposal validation, and deterministic server-side scheduling. Generation never saves subtasks. To return to local generation, set `AI_PROVIDER=ollama` and apply the backend configuration again. A real OpenRouter smoke test requires separate approval and credentials; the normal test suites mock every hosted call.
 
 ## Saving and completion
 
@@ -141,16 +163,16 @@ For a real configured Ollama preview, run `CHROME_EXECUTABLE=/path/to/local/chro
 
 For the complete MVP flow, run `CHROME_EXECUTABLE=/path/to/local/chrome npm run test:mvp-smoke` from `apps/web` after the database smoke. It uses the rendered Docker UI to create a task, make one real Ollama request, edit estimates/titles, confirm the plan, toggle completion and reload. It also checks controlled save/completion failures and responsive themes. **This check stops and starts this project's entire Compose stack**, retains its database volume, then verifies the same accepted steps and completion state. It deletes only its own task and writes screenshots to a temporary directory.
 
-Verified commands and limits are recorded in the [verification record](docs/releases/release-0.1-mvp/verification.md).
+Verified commands and limits are recorded in the [Release 0.1 verification](docs/releases/release-0.1-mvp/verification.md) and [Release 0.2 verification](docs/releases/release-0.2-ai-provider-observability/verification.md).
 
 ## Documentation
 
 - [Architecture and API](docs/architecture.md)
 - [Release 0.1 stories](docs/releases/release-0.1-mvp/README.md)
-- [Release 0.2 planned stories: TFA-005 OpenRouter and TFA-006 LLM diagnostics](docs/releases/release-0.2-ai-provider-observability/README.md)
+- [Release 0.2 stories: TFA-005 OpenRouter and planned TFA-006 LLM diagnostics](docs/releases/release-0.2-ai-provider-observability/README.md)
 - [Story and AI-assisted workflow](docs/story-workflow.md)
 - [Release 0.1 verification (completed)](docs/releases/release-0.1-mvp/verification.md)
-- [Release 0.2 verification (planned; not run)](docs/releases/release-0.2-ai-provider-observability/verification.md)
+- [Release 0.2 verification](docs/releases/release-0.2-ai-provider-observability/verification.md)
 - [Possible later improvements (not committed)](docs/future.md)
 - [Agent instructions](AGENTS.md)
 - [Codex roles and skills](.codex/README.md)

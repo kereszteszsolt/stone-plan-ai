@@ -1,8 +1,10 @@
-# Architecture — Release 0.1
+# Architecture — Release 0.1 and TFA-005
 
 The goal is a tiny, local-first, single-user full-stack application. For the demo, **Angular (Nginx), NestJS and PostgreSQL run together in Docker Compose**. An existing Ollama installation runs separately on the host; Angular and NestJS can still run natively during development.
 
 TFA-001–004 implement the local stack, the Task/Subtask schema and migration, task CRUD, the editable unsaved AI preview, explicit plan acceptance and persisted completion tracking.
+
+TFA-005 adds an explicitly selected backend OpenRouter adapter. Ollama remains the default. TFA-006 diagnostics are planned; Release 0.2 is not complete.
 
 ```mermaid
 flowchart TD
@@ -10,7 +12,8 @@ flowchart TD
     WEB -->|/api/* reverse proxy| API[api: NestJS]
     API -->|Prisma, db:5432| DB[(db: PostgreSQL)]
     DB --- VOL[(Dedicated postgres data volume)]
-    API -->|HTTP, configured host URL| AI[Ollama installed on host]
+    API -->|AI_PROVIDER=ollama, default| AI[Ollama installed on host]
+    API -->|AI_PROVIDER=openrouter, explicit opt-in| CLOUD[OpenRouter HTTP API]
 ```
 
 ## Container boundaries
@@ -54,7 +57,7 @@ Health, task CRUD, plan preview, plan save and completion routes are implemented
 | `GET` | `/api/tasks/:id` | Read a task and its subtasks |
 | `PATCH` | `/api/tasks/:id` | Edit task details; scheduling inputs are locked after a plan is saved |
 | `DELETE` | `/api/tasks/:id` | Delete task and subtasks |
-| `POST` | `/api/tasks/:id/plan-preview` | Call Ollama; return a validated, unsaved proposal |
+| `POST` | `/api/tasks/:id/plan-preview` | Call the selected provider; return a validated, unsaved proposal |
 | `POST` | `/api/tasks/:id/plan` | Validate, assign days, and save accepted subtasks in a transaction |
 | `PATCH` | `/api/subtasks/:id` | Set `completed` |
 
@@ -66,7 +69,9 @@ The preview response contains editable `title`, `estimatedMinutes`, and server-a
 
 `PATCH /api/subtasks/:id` accepts only `{ completed: boolean }` and returns status 200 with the owning task, ordered subtasks and updated progress. It sets a value rather than inverting it, so repeating a request has the same completion result. Completion updates lock the parent task and update the step and task timestamp in one transaction. Missing tasks/steps return 404. No additional business entity, column or migration is required.
 
-`OllamaService` owns the prompt, a single non-streaming `/api/chat` request, a 1–120-second configurable timeout, a 64 KiB response cap and nested JSON/Zod parsing. The request uses a JSON schema whose per-step maximum matches the task's daily minutes; returned estimates are still checked and scheduled server-side. `schedulePlan()` fills days in order without splitting or reordering steps, and rejects packing overflow even when an arithmetic total might fit. Angular's task API service remains its only HTTP boundary; the preview component owns transient Signals/forms and cancels its HTTP subscription when its view closes.
+`PlanPreviewService` reads `AI_PROVIDER` at generation: omitted selects `ollama`, `openrouter` opts into the hosted adapter, and any other value fails clearly. Both adapters are injected directly; no provider framework or cloud fallback is involved. Validation is lazy, so health/task/persistence operations do not require model credentials. `planMessages()` owns the shared prompt and escaped task data. `OllamaService` makes one non-streaming `/api/chat` request; `OpenRouterService` makes one authenticated `/chat/completions` request with strict JSON Schema, required parameter support and provider fallbacks disabled. The OpenRouter adapter also rejects redirects, refusals, incomplete completions, and error envelopes returned with HTTP 200. Credentials and raw provider failures stay out of API errors and logs.
+
+Each adapter has its own 1–120-second timeout covering the full response, uses the shared 64 KiB bounded reader and validates the nested proposal with the same strict Zod schema. The request's per-step maximum matches the task's daily minutes; returned estimates are still checked and scheduled server-side. `schedulePlan()` fills days in order without splitting or reordering steps, and rejects packing overflow even when an arithmetic total might fit. Angular's task API service remains its only HTTP boundary; it recognizes the fixed AI error codes while keeping unknown server failures generic. The preview component owns transient Signals/forms and cancels its HTTP subscription when its view closes.
 
 Angular presents an inline save confirmation before contacting the persistence endpoint. The response replaces the preview with a saved daily plan and updates list/detail progress. Navigation and conflicting edits are disabled during writes. Completion checkboxes keep their previous value until a successful response; failed writes show a retryable error without replacing the draft or recorded progress. Saved task budget fields are disabled while title/description editing remains available.
 
@@ -76,9 +81,9 @@ Angular presents an inline save confirmation before contacting the persistence e
 - Make model output schema-constrained and validate it again server-side.
 - Schedule ordered subtasks deterministically and keep each day within its budget; reject an over-capacity plan with a user-friendly message rather than silently cutting work.
 - Handle unavailable Ollama, timeout, invalid JSON, and failed validation with a clear UI error and manual retry.
-- Preview errors use safe codes/messages: `OLLAMA_NOT_CONFIGURED` and `OLLAMA_UNAVAILABLE` (503), `OLLAMA_TIMEOUT` (504), `INVALID_AI_OUTPUT` (502), and `PLAN_EXCEEDS_BUDGET` (422). Raw provider text is not exposed, partial/extra-field output is rejected, and there is no automatic repair, model fallback or cloud call.
+- Preview errors use safe codes/messages: `AI_PROVIDER_NOT_CONFIGURED`, `OLLAMA_NOT_CONFIGURED`, `OLLAMA_UNAVAILABLE`, `OPENROUTER_NOT_CONFIGURED`, `OPENROUTER_ACCESS_DENIED`, `OPENROUTER_CREDITS_REQUIRED`, `OPENROUTER_MODEL_UNSUPPORTED`, `OPENROUTER_RATE_LIMITED`, and `OPENROUTER_UNAVAILABLE` (503); `OLLAMA_TIMEOUT` and `OPENROUTER_TIMEOUT` (504); `INVALID_AI_OUTPUT` (502); and `PLAN_EXCEEDS_BUDGET` (422). Raw provider text is not exposed and partial/extra-field proposals are rejected. There is no automatic repair or fallback. A hosted call occurs only with explicit OpenRouter selection and a generation request.
 - Keep API/database/Ollama connection settings in environment variables; distinguish container DNS addresses from localhost dev URLs. Use no hardcoded API keys and no hidden cloud fallback.
-- Unit-test scheduling and AI parsing with fixed JSON fixtures; require only one small real-model smoke test.
+- Unit-test scheduling and AI parsing with fixed JSON fixtures. Real-provider checks need explicit approval; hosted checks also need credentials and approval for the billable request.
 - The Angular client calls NestJS only. All persistence, prompt construction, validation, and scheduling belong to the backend.
 
 ## File layout
@@ -87,5 +92,5 @@ Angular presents an inline save confirmation before contacting the persistence e
 apps/api/   # NestJS, Prisma schema/migrations, tests, API Dockerfile
 apps/web/   # Angular standalone components, Signals, web Dockerfile
 infra/      # Docker Compose and Nginx /api reverse-proxy configuration
-docs/       # Architecture, one release, evidence, and future notes
+docs/       # Architecture, release maps, evidence, and future notes
 ```

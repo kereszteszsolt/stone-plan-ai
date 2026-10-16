@@ -2,7 +2,7 @@
 
 ## Repository and status
 
-Task Flow AI is a small NestJS/Angular app with PostgreSQL/Prisma and a separately running Ollama instance. Release 0.1 (`TFA-001`–`TFA-004`) is implemented and locally verified. Release 0.2 (`TFA-005` OpenRouter and `TFA-006` safe AI-call diagnostics) is **planned only**. Do not present planned functionality as shipped.
+Task Flow AI is a small NestJS/Angular app with PostgreSQL/Prisma and a separately running Ollama instance. Release 0.1 (`TFA-001`–`TFA-004`) is implemented and locally verified. Release 0.2 is **in progress**: `TFA-005` OpenRouter is implemented with mocked tests and local Docker verification; a live OpenRouter call was not run. `TFA-006` safe AI-call diagnostics is **planned only**. Do not present the complete release or planned diagnostics as shipped.
 
 ## Read only relevant context
 
@@ -48,4 +48,4 @@ No SPDX headers in Markdown, TOML, YAML, JSON, `.env.example`, Dockerfiles, gene
 
 ## Scope boundary
 
-Release 0.2 remains planned until verified. `docs/future.md` is an idea list, **not** a backlog. Do not add agent workflows, authentication, calendar integrations, new releases or new dependencies without a separate request.
+Release 0.2 remains incomplete until both stories are implemented and verified. `docs/future.md` is an idea list, **not** a backlog. Do not add agent workflows, authentication, calendar integrations, new releases or new dependencies without a separate request.

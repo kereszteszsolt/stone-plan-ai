@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned. Neither TFA-005 nor TFA-006 is implemented; Release 0.1 remains completed and usable with external Ollama.
+In progress. TFA-005 is implemented and locally verified with mocked provider tests and the default-Ollama Docker stack. A live OpenRouter call was not run. TFA-006 remains planned; Release 0.2 is not complete. Release 0.1 remains completed and usable with external Ollama.
 
 ## Goal
 
@@ -12,7 +12,7 @@ Let the existing plan preview use OpenRouter when explicitly configured, then ad
 
 | Order | Story | Scope | Status |
 | ---: | --- | --- | --- |
-| 1 | [TFA-005](stories/TFA-005-openrouter-provider-integration.md) | Optional OpenRouter adapter, Ollama remains the default | Planned |
+| 1 | [TFA-005](stories/TFA-005-openrouter-provider-integration.md) | Optional OpenRouter adapter, Ollama remains the default | Implemented; live OpenRouter check not run |
 | 2 | [TFA-006](stories/TFA-006-basic-llm-observability.md) | Structured provider/latency/error logs, no content or secrets | Planned |
 
 ## Constraints
@@ -27,7 +27,7 @@ Let the existing plan preview use OpenRouter when explicitly configured, then ad
 
 ## Verification
 
-The [Release 0.2 verification record](verification.md) starts with *Not run*. Update it with exact commands, test results, and optional approved live OpenRouter checks as each story is completed. Do not state that Release 0.2 shipped while either story is planned.
+The [Release 0.2 verification record](verification.md) contains TFA-005's actual mocked/local results; TFA-006 and the optional live OpenRouter check remain *Not run*. Update it with exact commands and results as each approved story is completed. Do not state that Release 0.2 shipped while either story is planned.
 
 ## Out of scope
 
