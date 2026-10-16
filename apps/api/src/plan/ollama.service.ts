@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { planJsonSchema, planProposalSchema, type ProposedSubtask } from './plan-schema';
 import { planMessages, type TaskPrompt } from './plan-prompt';
 import { invalidAiOutput, readModelResponse } from './model-response';
+import { readTokenUsage, type UsageReporter } from './ai-call-diagnostics';
 
 const replySchema = z.object({
   done: z.literal(true), done_reason: z.string().optional(), message: z.object({ content: z.string().min(1).max(60000) }),
@@ -13,7 +14,7 @@ const replySchema = z.object({
 
 @Injectable()
 export class OllamaService {
-  async generate(task: TaskPrompt): Promise<ProposedSubtask[]> {
+  async generate(task: TaskPrompt, onUsage?: UsageReporter): Promise<ProposedSubtask[]> {
     const model = process.env['OLLAMA_MODEL']?.trim();
     const timeout = Number(process.env['OLLAMA_TIMEOUT_MS'] ?? 60000);
     let url: URL;
@@ -66,7 +67,9 @@ export class OllamaService {
       });
     }
     try {
-      const reply = replySchema.parse(JSON.parse(raw));
+      const parsed: unknown = JSON.parse(raw);
+      onUsage?.(readTokenUsage('ollama', parsed));
+      const reply = replySchema.parse(parsed);
       return planProposalSchema.parse(JSON.parse(reply.message.content)).subtasks;
     } catch {
       throw invalidAiOutput();

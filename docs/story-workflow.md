@@ -2,7 +2,7 @@
 
 ## Releases and story order
 
-Release 0.1 (`TFA-001`–`TFA-004`) is implemented and locally verified. [Release 0.2](releases/release-0.2-ai-provider-observability/README.md) is in progress: [TFA-005](releases/release-0.2-ai-provider-observability/stories/TFA-005-openrouter-provider-integration.md) for OpenRouter is implemented with mocked/local checks; [TFA-006](releases/release-0.2-ai-provider-observability/stories/TFA-006-basic-llm-observability.md) for safe provider/latency logs remains planned and requires separate approval. See the release verification for live-provider limits. Start each story only with clear user approval; do not reopen Release 0.1 or pre-implement later ideas.
+Release 0.1 (`TFA-001`–`TFA-004`) is implemented and locally verified. [Release 0.2](releases/release-0.2-ai-provider-observability/README.md) is also implemented with mocked/local checks: [TFA-005](releases/release-0.2-ai-provider-observability/stories/TFA-005-openrouter-provider-integration.md) adds OpenRouter and [TFA-006](releases/release-0.2-ai-provider-observability/stories/TFA-006-basic-llm-observability.md) adds safe provider/latency logs. See the release verification for live-provider limits and commit approvals. Start any new story only with clear user approval; do not reopen Release 0.1 or pre-implement later ideas.
 
 Each story uses `Status`, `User story`, `Goal`, `Dependencies`, `Acceptance criteria`, and `Out of scope`. Valid states are `Planned`, `In progress`, and `Implemented`. Keep plans separate from shipped functionality.
 

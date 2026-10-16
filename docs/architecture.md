@@ -1,10 +1,10 @@
-# Architecture — Release 0.1 and TFA-005
+# Architecture — Releases 0.1 and 0.2
 
 The goal is a tiny, local-first, single-user full-stack application. For the demo, **Angular (Nginx), NestJS and PostgreSQL run together in Docker Compose**. An existing Ollama installation runs separately on the host; Angular and NestJS can still run natively during development.
 
 TFA-001–004 implement the local stack, the Task/Subtask schema and migration, task CRUD, the editable unsaved AI preview, explicit plan acceptance and persisted completion tracking.
 
-TFA-005 adds an explicitly selected backend OpenRouter adapter. Ollama remains the default. TFA-006 diagnostics are planned; Release 0.2 is not complete.
+TFA-005 adds an explicitly selected backend OpenRouter adapter. Ollama remains the default. TFA-006 adds bounded local model-call diagnostics. Both stories are locally verified; live-provider limits are recorded separately in release verification.
 
 ```mermaid
 flowchart TD
@@ -70,6 +70,8 @@ The preview response contains editable `title`, `estimatedMinutes`, and server-a
 `PATCH /api/subtasks/:id` accepts only `{ completed: boolean }` and returns status 200 with the owning task, ordered subtasks and updated progress. It sets a value rather than inverting it, so repeating a request has the same completion result. Completion updates lock the parent task and update the step and task timestamp in one transaction. Missing tasks/steps return 404. No additional business entity, column or migration is required.
 
 `PlanPreviewService` reads `AI_PROVIDER` at generation: omitted selects `ollama`, `openrouter` opts into the hosted adapter, and any other value fails clearly. Both adapters are injected directly; no provider framework or cloud fallback is involved. Validation is lazy, so health/task/persistence operations do not require model credentials. `planMessages()` owns the shared prompt and escaped task data. `OllamaService` makes one non-streaming `/api/chat` request; `OpenRouterService` makes one authenticated `/chat/completions` request with strict JSON Schema, required parameter support and provider fallbacks disabled. The OpenRouter adapter also rejects redirects, refusals, incomplete completions, and error envelopes returned with HTTP 200. Credentials and raw provider failures stay out of API errors and logs.
+
+TFA-006 adds one bounded `ai_plan_call` JSON outcome event in `PlanPreviewService` for each selected provider attempt, including configuration/validation/scheduling failures. The thin preview controller generates a fresh UUID, returns it in `X-Request-ID`, and passes it to the service; no caller ID is trusted or sent to the model. The event includes only that UUID, provider, a bounded safe configured model identifier, monotonic duration, outcome, a fixed error category and any valid reported token counts. The provider adapters report numeric usage separately from the unchanged subtask return value, so failed proposals can retain known usage without logging their content. Missing/invalid usage is omitted and no totals or costs are inferred. Pre-provider HTTP/task/selection rejections emit no model event. API bodies, scheduling, persistence, Angular and Compose remain unchanged. This is local call diagnostics, not distributed tracing or a hosted telemetry integration.
 
 Each adapter has its own 1–120-second timeout covering the full response, uses the shared 64 KiB bounded reader and validates the nested proposal with the same strict Zod schema. The request's per-step maximum matches the task's daily minutes; returned estimates are still checked and scheduled server-side. `schedulePlan()` fills days in order without splitting or reordering steps, and rejects packing overflow even when an arithmetic total might fit. Angular's task API service remains its only HTTP boundary; it recognizes the fixed AI error codes while keeping unknown server failures generic. The preview component owns transient Signals/forms and cancels its HTTP subscription when its view closes.
 

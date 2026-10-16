@@ -2,7 +2,7 @@
 
 ## Status
 
-Implemented — Release 0.2; locally verified on 2026-10-16 with mocked provider tests and an isolated default-Ollama Docker stack. Optional live OpenRouter check not run. Release 0.2 remains incomplete while TFA-006 is planned.
+Implemented — Release 0.2; locally verified on 2026-10-16 with mocked provider tests and an isolated default-Ollama Docker stack. Optional live OpenRouter check not run. Current release completion is tracked in the [release map](../README.md).
 
 ## User story
 

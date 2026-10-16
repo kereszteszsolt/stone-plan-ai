@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { invalidAiOutput, readModelResponse } from './model-response';
 import { planMessages, type TaskPrompt } from './plan-prompt';
 import { planJsonSchema, planProposalSchema, type ProposedSubtask } from './plan-schema';
+import { readTokenUsage, type UsageReporter } from './ai-call-diagnostics';
 
 const replySchema = z.object({
   error: z.never().optional(),
@@ -43,7 +44,7 @@ function providerError(status: number): HttpException {
 
 @Injectable()
 export class OpenRouterService {
-  async generate(task: TaskPrompt): Promise<ProposedSubtask[]> {
+  async generate(task: TaskPrompt, onUsage?: UsageReporter): Promise<ProposedSubtask[]> {
     const apiKey = process.env['OPENROUTER_API_KEY']?.trim();
     const model = process.env['OPENROUTER_MODEL']?.trim();
     const timeout = Number(process.env['OPENROUTER_TIMEOUT_MS'] ?? 60000);
@@ -99,6 +100,7 @@ export class OpenRouterService {
     } catch {
       throw invalidAiOutput();
     }
+    onUsage?.(readTokenUsage('openrouter', parsed));
     // OpenRouter can report a provider failure inside an HTTP 200 response.
     const failure = errorSchema.safeParse(parsed);
     if (failure.success) throw providerError(failure.data.error.code);

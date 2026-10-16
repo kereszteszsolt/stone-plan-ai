@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress. TFA-005 is implemented and locally verified with mocked provider tests and the default-Ollama Docker stack. A live OpenRouter call was not run. TFA-006 remains planned; Release 0.2 is not complete. Release 0.1 remains completed and usable with external Ollama.
+Implemented and locally verified. TFA-005 and TFA-006 passed their focused mocked checks and isolated default-Ollama Docker checks. A live OpenRouter call was not run; local completion does not claim hosted-provider verification or publication. TFA-006 commit was separately approved on 2026-10-16. Release 0.1 evidence is unchanged.
 
 ## Goal
 
@@ -13,7 +13,7 @@ Let the existing plan preview use OpenRouter when explicitly configured, then ad
 | Order | Story | Scope | Status |
 | ---: | --- | --- | --- |
 | 1 | [TFA-005](stories/TFA-005-openrouter-provider-integration.md) | Optional OpenRouter adapter, Ollama remains the default | Implemented; live OpenRouter check not run |
-| 2 | [TFA-006](stories/TFA-006-basic-llm-observability.md) | Structured provider/latency/error logs, no content or secrets | Planned |
+| 2 | [TFA-006](stories/TFA-006-basic-llm-observability.md) | Structured provider/latency/error logs, no content or secrets | Implemented; commit approved |
 
 ## Constraints
 
@@ -27,7 +27,7 @@ Let the existing plan preview use OpenRouter when explicitly configured, then ad
 
 ## Verification
 
-The [Release 0.2 verification record](verification.md) contains TFA-005's actual mocked/local results; TFA-006 and the optional live OpenRouter check remain *Not run*. Update it with exact commands and results as each approved story is completed. Do not state that Release 0.2 shipped while either story is planned.
+The [Release 0.2 verification record](verification.md) contains separate actual commands and results for both stories, including an observed safe Docker diagnostic event. The optional live OpenRouter check remains *Not run*. Keep future results and publication status tied to actual evidence and separate approvals.
 
 ## Out of scope
 

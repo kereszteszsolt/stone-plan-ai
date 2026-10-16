@@ -62,7 +62,7 @@ The containers use Compose's default network and one named `postgres_data` volum
 
 **Ollama runs separately from the demo**, configured with `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, and `OLLAMA_TIMEOUT_MS`. Compose does not install a model or start Ollama. Task CRUD starts even when Ollama is unavailable; only an explicit **Generate plan** request contacts the model. The browser calls NestJS through `/api`.
 
-Release 0.2 is in progress: **TFA-005 (OpenRouter)** adds the optional backend provider described below; **TFA-006 (basic LLM call diagnostics)** remains planned. See the [release map](docs/releases/release-0.2-ai-provider-observability/README.md) and [verification record](docs/releases/release-0.2-ai-provider-observability/verification.md) for checks and limits. Ollama remains the default, no cloud fallback occurs, and the browser never calls an AI provider directly.
+Release 0.2 is implemented and locally verified: **TFA-005 (OpenRouter)** adds the optional backend provider described below; **TFA-006 (basic LLM call diagnostics)** adds safe outcome/latency events. See the [release map](docs/releases/release-0.2-ai-provider-observability/README.md) and [verification record](docs/releases/release-0.2-ai-provider-observability/verification.md) for mocked/local checks, live-provider limits and commit status. Ollama remains the default, no cloud fallback occurs, and the browser never calls an AI provider directly.
 
 ## Ollama plan preview
 
@@ -107,6 +107,33 @@ Apply Compose settings with `docker compose up --build -d --wait`, or restart th
 **OpenRouter generation sends the selected task's title, description, and time budget to a hosted provider and may incur usage charges.** Keep the key in backend environment variables, never in Angular settings or Git. The API returns fixed error messages for missing configuration, denied access, insufficient credits, unsupported structured output, rate limits, outages, timeouts, and invalid JSON; provider responses and credentials are not returned or logged.
 
 The existing **Generate plan → review/edit → Save plan → Confirm and save** flow works with either provider. Both use the same prompt, strict Zod proposal validation, and deterministic server-side scheduling. Generation never saves subtasks. To return to local generation, set `AI_PROVIDER=ollama` and apply the backend configuration again. A real OpenRouter smoke test requires separate approval and credentials; the normal test suites mock every hosted call.
+
+## AI call diagnostics
+
+Inspect backend outcomes with:
+
+```sh
+docker compose logs api
+```
+
+Each selected provider attempt produces one NestJS log line containing a JSON `ai_plan_call` event. The `X-Request-ID` response header identifies the same attempt on both success and provider failure; the backend generates a fresh UUID and ignores caller-supplied IDs. The preview response body and Angular flow stay the same.
+
+| Field | Meaning |
+| --- | --- |
+| `event` | Always `ai_plan_call` |
+| `requestId` | Generated backend request UUID, also returned in `X-Request-ID` |
+| `provider` | Explicitly selected `ollama` or `openrouter` |
+| `model` | Configured model identifier, at most 160 safe characters; missing, unsafe, placeholder or credential-like values become `unknown` |
+| `outcome` | `success` after proposal validation and scheduling; otherwise `failure` |
+| `durationMs` | Non-negative whole milliseconds from provider invocation through parsing/validation/scheduling, excluding the initial database read |
+| `errorCategory` | A fixed safe API error code or `UNKNOWN_ERROR` on failure; `null` on success |
+| `usage` | Optional numeric `inputTokens`, `outputTokens`, and provider-reported `totalTokens`; absent counts stay absent |
+
+Ollama's [reported token counts](https://docs.ollama.com/api/chat), `prompt_eval_count` and `eval_count`, map to input/output counts. OpenRouter's [usage object](https://openrouter.ai/docs/api/reference/overview) provides `prompt_tokens`, `completion_tokens`, and optionally `total_tokens`. Only non-negative safe integers are retained; zero is a known value, malformed metadata is ignored, and no missing total or cost is calculated. Available counts are retained even when a returned proposal fails validation. Error response bodies are not read for usage.
+
+Task text, task IDs, prompts, raw model replies, provider error details, headers and API keys are excluded from these events. Only configured model identifiers are used, never provider-returned model text. Invalid HTTP input, missing tasks, already-saved plans and invalid provider selection produce no provider event because generation did not start. Missing provider configuration does produce one failure event for the selected attempt.
+
+These local request IDs and outcome events are **not distributed tracing or a Langfuse integration**: there are no spans across services, dashboards, collectors, content logs, automatic retries, or provider fallback.
 
 ## Saving and completion
 
@@ -169,7 +196,7 @@ Verified commands and limits are recorded in the [Release 0.1 verification](docs
 
 - [Architecture and API](docs/architecture.md)
 - [Release 0.1 stories](docs/releases/release-0.1-mvp/README.md)
-- [Release 0.2 stories: TFA-005 OpenRouter and planned TFA-006 LLM diagnostics](docs/releases/release-0.2-ai-provider-observability/README.md)
+- [Release 0.2 stories: TFA-005 OpenRouter and TFA-006 LLM diagnostics](docs/releases/release-0.2-ai-provider-observability/README.md)
 - [Story and AI-assisted workflow](docs/story-workflow.md)
 - [Release 0.1 verification (completed)](docs/releases/release-0.1-mvp/verification.md)
 - [Release 0.2 verification](docs/releases/release-0.2-ai-provider-observability/verification.md)
