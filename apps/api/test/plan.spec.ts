@@ -54,7 +54,7 @@ describe('Ollama adapter with fixed responses', () => {
     expect(String(url)).toBe('http://ollama.local:11434/api/chat');
     const body = JSON.parse(String(options?.body));
     expect(body.model).toBe('qwen3:0.6b');
-    expect(body.format).toEqual(planJsonSchema(task.minutesPerDay));
+    expect(body.format).toEqual(planJsonSchema(task.days, task.minutesPerDay));
     expect(body.format.properties.subtasks.items.properties.estimatedMinutes.maximum).toBe(task.minutesPerDay);
     expect(body.stream).toBe(false);
     expect(body.think).toBe(false);
@@ -139,7 +139,7 @@ describe('Ollama adapter with fixed responses', () => {
 });
 
 describe('Deterministic ordered scheduling', () => {
-  it('fills each day in order and keeps stable step order', () => {
+  it('balances each day in order and keeps stable step order', () => {
     expect(schedulePlan(steps, 2, 30)).toEqual(steps.map((step, order) => ({ ...step, day: order < 2 ? 1 : 2, order })));
   });
 
@@ -190,6 +190,44 @@ describe('Plan preview HTTP boundary', () => {
     expect(database.task.create).not.toHaveBeenCalled();
     expect(database.task.update).not.toHaveBeenCalled();
     expect(database.subtask.create).not.toHaveBeenCalled();
+  });
+
+  it.each(['ollama', 'openrouter'])('generates and schedules a full 30-day plan with %s', async (provider) => {
+    process.env['AI_PROVIDER'] = provider;
+    process.env['OPENROUTER_API_KEY'] = 'fixture-key';
+    process.env['OPENROUTER_MODEL'] = 'fixture/model';
+    database.task.findUnique.mockResolvedValue({ ...task, days: 30 });
+    const subtasks = Array.from({ length: 60 }, (_, index) => ({ title: `Session ${index + 1}`, estimatedMinutes: 10 }));
+    const fetchMock = jest.spyOn(globalThis, 'fetch').mockResolvedValue(provider === 'openrouter'
+      ? new Response(JSON.stringify({ choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: JSON.stringify({ subtasks }) } }] }))
+      : reply(subtasks));
+    const response = await request(app.getHttpServer()).post(`/api/tasks/${id}/plan-preview`).expect(200);
+    expect(response.body.subtasks).toEqual(subtasks.map((step, order) => ({ ...step, order, day: Math.floor(order / 2) + 1 })));
+    const body = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+    const schema = provider === 'ollama' ? body.format : body.response_format.json_schema.schema;
+    expect(schema).toEqual(planJsonSchema(30, 30));
+    expect(schema.properties.subtasks).toMatchObject({ minItems: 30, maxItems: 60 });
+    expect(body.messages[0].content).toContain('30–60');
+    expect(JSON.parse(body.messages[1].content)).toMatchObject({ days: 30, minutesPerDay: 30, totalMinutes: 900 });
+    if (provider === 'ollama') expect(body.options.num_predict).toBe(7680);
+    else expect(body.max_tokens).toBe(4096);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(database.task.update).not.toHaveBeenCalled();
+    expect(database.subtask.create).not.toHaveBeenCalled();
+  });
+
+  it.each(['ollama', 'openrouter'])('rejects an undersized 30-day proposal with %s without retrying', async (provider) => {
+    process.env['AI_PROVIDER'] = provider;
+    process.env['OPENROUTER_API_KEY'] = 'fixture-key';
+    process.env['OPENROUTER_MODEL'] = 'fixture/model';
+    database.task.findUnique.mockResolvedValue({ ...task, days: 30 });
+    const fetchMock = jest.spyOn(globalThis, 'fetch').mockResolvedValue(provider === 'openrouter'
+      ? new Response(JSON.stringify({ choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: JSON.stringify({ subtasks: steps }) } }] }))
+      : reply());
+    const response = await request(app.getHttpServer()).post(`/api/tasks/${id}/plan-preview`).expect(502);
+    expect(response.body.code).toBe('INVALID_AI_OUTPUT');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(database.task.update).not.toHaveBeenCalled();
   });
 
   it.each(['', 'automatic', 'OLLAMA', 'openrouter '])('rejects invalid provider %s without contacting either model', async (provider) => {

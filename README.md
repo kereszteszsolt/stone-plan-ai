@@ -68,11 +68,13 @@ Release 0.2 is implemented and locally verified: **TFA-005 (OpenRouter)** adds t
 
 Before generating, set `OLLAMA_MODEL` in the root `.env` to an **already installed local model**. The local smoke used `qwen3:0.6b`. The container's default `OLLAMA_BASE_URL` is `http://host.docker.internal:11434`; a native API uses its own `.env` and usually `http://localhost:11434`.
 
-Select a task and choose **Generate plan**. The backend requests structured JSON, validates 3–8 steps with trimmed titles and positive integer minute estimates, then assigns days in order. Each step must fit in a day and all steps must fit the available days. An over-capacity response is rejected instead of shortened or rearranged.
+Tasks support **1–30 days** and **15–240 minutes per day**. Select a task and choose **Generate plan**. The backend requests structured JSON with a task-aware step count: at least `max(3, days)` and at most `max(8, 2 × days)` steps. A 3-day task allows 3–8 steps; a 14-day task allows 14–28; a 30-day task allows 30–60. Both Ollama and OpenRouter receive the days, daily minutes and total budget and are asked for useful progressive sessions, practice and review where appropriate, without filler.
+
+The backend validates trimmed titles and positive integer minute estimates, then balances work across the available days while preserving step order. Each step stays on one day, every day gets work when enough steps exist, and no day exceeds the daily limit. Unused daily minutes are allowed. An impossible ordered plan is rejected instead of shortened, padded or rearranged. This behavior is tracked in [TFA-007](docs/releases/release-0.2-ai-provider-observability/stories/TFA-007-thirty-day-plans.md); previously saved schedules are preserved.
 
 Edit the titles and estimates directly in the preview. **The preview is unsaved:** it disappears on reload, task switching, task editing, or explicit discard. Generated day labels retain the original schedule while you edit estimates. **Generate again** replaces the preview only after a successful response; a failed attempt keeps your draft and shows a retryable error.
 
-`OLLAMA_TIMEOUT_MS` defaults to 60000 and accepts integer values from 1000 to 120000. Nginx waits up to 130 seconds so backend timeout errors can reach the UI. Generation errors distinguish an unavailable/unconfigured model, timeout, invalid response and insufficient time budget. There is one Ollama request per explicit generation, with no automatic repair or cloud fallback; cloud model tags are rejected.
+`OLLAMA_TIMEOUT_MS` defaults to 60000 and accepts integer values from 1000 to 120000. Ollama's requested output budget grows with the possible step count from 1024 to at most 7680 tokens for a 30-day plan; larger plans can take longer to generate. Nginx waits up to 130 seconds so backend timeout errors can reach the UI. Generation errors distinguish an unavailable/unconfigured model, timeout, invalid response and insufficient time budget. There is one Ollama request per explicit generation, with no automatic repair or cloud fallback; cloud model tags are rejected.
 
 For a slow CPU-only model, increase `OLLAMA_TIMEOUT_MS` up to `120000` in the root `.env` and apply it with `docker compose up -d --wait`, then retry generation. A native API reads the setting from its own `.env` and needs restarting.
 
@@ -107,6 +109,8 @@ Apply Compose settings with `docker compose up --build -d --wait`, or restart th
 
 `OPENROUTER_MAX_TOKENS` defaults to `4096` and accepts integers from `256` to `8192`. This bounds the requested output budget; for most reasoning providers, [reasoning and visible output share that budget](https://openrouter.ai/docs/guides/best-practices/reasoning-tokens). The former fixed 1024-token cap could be consumed before a reasoning model finished the JSON plan. A response with `finish_reason: "length"` now returns the safe `OPENROUTER_OUTPUT_TRUNCATED` error instead of the generic invalid-plan message; partial plans are still rejected. If this error appears, adjust the backend limit in `.env` and reapply Compose settings before manually retrying. A higher limit can increase per-request usage charges; no automatic retry or reasoning-mode/model change is performed.
 
+A 30-day plan requires more JSON than a short plan. Its generation still respects the same configured OpenRouter ceiling; TFA-007 does not automatically raise it. If the response reaches that limit, the same safe truncation error is shown and no partial plan is accepted.
+
 **OpenRouter generation sends the selected task's title, description, and time budget to a hosted provider and may incur usage charges.** Keep the key in backend environment variables, never in Angular settings or Git. The API returns fixed error messages for missing configuration, denied access, insufficient credits, unsupported structured output, rate limits, outages, timeouts, and invalid JSON; provider responses and credentials are not returned or logged.
 
 The existing **Generate plan → review/edit → Save plan → Confirm and save** flow works with either provider. Both use the same prompt, strict Zod proposal validation, and deterministic server-side scheduling. Generation never saves subtasks. To return to local generation, set `AI_PROVIDER=ollama` and apply the backend configuration again. A real OpenRouter smoke test requires separate approval and credentials; the normal test suites mock every hosted call.
@@ -140,7 +144,7 @@ These local request IDs and outcome events are **not distributed tracing or a La
 
 ## Saving and completion
 
-Select **Save plan** after reviewing your edits. The confirmation freezes the edited fields; **Keep editing** returns to the draft without writing anything. **Confirm and save** sends only step titles and estimates. The backend validates 3–8 steps, recalculates days using the task's current budget, and saves all steps in one transaction. If the estimates cannot fit in order, adjust them and retry; a failed save keeps your draft.
+Select **Save plan** after reviewing your edits. The confirmation freezes the edited fields; **Keep editing** returns to the draft without writing anything. **Confirm and save** sends only step titles and estimates. Inside one transaction, the backend checks the step count against the task's current stored day count, balances the edited estimates across those days using the same scheduler as preview, and saves all steps. If the count or estimates cannot fit, adjust the draft or unsaved task's budget and retry; a failed save keeps your draft.
 
 Each task can have only one saved plan. Once accepted, the steps and time budget are fixed; the task's title and description can still be edited. To use a different plan, create another task. Concurrent saves are rejected rather than replacing or duplicating steps.
 
@@ -189,6 +193,8 @@ CHROME_EXECUTABLE=/path/to/local/chrome npm run test:smoke
 
 Use an installed Chrome or Chromium headless-shell executable. Playwright Core controls that local browser and does not install one. The test creates, edits, reloads and deletes its own task; checks failed-save recovery, confirmation and retry; and captures 1200/390/320-pixel forms in a temporary directory. Run it after the database smoke, since that smoke restarts PostgreSQL. On Windows, set `CHROME_EXECUTABLE` in your shell before running the npm command.
 
+For TFA-007, run `CHROME_EXECUTABLE=/path/to/local/chrome node test/horizon-smoke.cjs` from `apps/web`. It checks a 30-day form, a 60-step preview, real API/database acceptance, completion and reload, plus desktop/light and mobile/dark rendering. Only generation is intercepted with a fixed browser response, so this check makes no real model call and incurs no provider charge. Its temporary task is deleted and screenshots are written under the system temporary directory.
+
 For a real configured Ollama preview, run `CHROME_EXECUTABLE=/path/to/local/chrome npm run test:preview-smoke` from `apps/web` after the database smoke. It makes one real generation, verifies editing without persistence and reload discard, checks four controlled UI error responses, and captures light/dark responsive previews. It removes its own task while preserving existing tasks.
 
 For the complete MVP flow, run `CHROME_EXECUTABLE=/path/to/local/chrome npm run test:mvp-smoke` from `apps/web` after the database smoke. It uses the rendered Docker UI to create a task, make one real Ollama request, edit estimates/titles, confirm the plan, toggle completion and reload. It also checks controlled save/completion failures and responsive themes. **This check stops and starts this project's entire Compose stack**, retains its database volume, then verifies the same accepted steps and completion state. It deletes only its own task and writes screenshots to a temporary directory.
@@ -199,7 +205,7 @@ Verified commands and limits are recorded in the [Release 0.1 verification](docs
 
 - [Architecture and API](docs/architecture.md)
 - [Release 0.1 stories](docs/releases/release-0.1-mvp/README.md)
-- [Release 0.2 stories: TFA-005 OpenRouter and TFA-006 LLM diagnostics](docs/releases/release-0.2-ai-provider-observability/README.md)
+- [Release 0.2 stories: OpenRouter, LLM diagnostics and 30-day plans](docs/releases/release-0.2-ai-provider-observability/README.md)
 - [Story and AI-assisted workflow](docs/story-workflow.md)
 - [Release 0.1 verification (completed)](docs/releases/release-0.1-mvp/verification.md)
 - [Release 0.2 verification](docs/releases/release-0.2-ai-provider-observability/verification.md)

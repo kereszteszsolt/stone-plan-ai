@@ -64,7 +64,7 @@ describe('Accepted plan and persisted progress HTTP contracts', () => {
     ['empty request', {}],
     ['missing steps', { subtasks: null }],
     ['too few steps', { subtasks: steps.slice(0, 2) }],
-    ['too many steps', { subtasks: Array.from({ length: 9 }, () => steps[0]) }],
+    ['too many steps', { subtasks: Array.from({ length: 61 }, () => steps[0]) }],
     ['blank title', { subtasks: [{ ...steps[0], title: ' ' }, ...steps.slice(1)] }],
     ['long title', { subtasks: [{ ...steps[0], title: 'a'.repeat(161) }, ...steps.slice(1)] }],
     ['string estimate', { subtasks: [{ ...steps[0], estimatedMinutes: '10' }, ...steps.slice(1)] }],
@@ -80,6 +80,37 @@ describe('Accepted plan and persisted progress HTTP contracts', () => {
     await request(app.getHttpServer()).post(`/api/tasks/${id}/plan`).send(body).expect(400);
     expect(database.$transaction).not.toHaveBeenCalled();
     expect(database.task.update).not.toHaveBeenCalled();
+  });
+
+  it.each([30, 60])('accepts %i steps across 30 days using the locked budget', async (count) => {
+    database.task.findUnique.mockResolvedValue({ ...task, days: 30 });
+    const subtasks = Array.from({ length: count }, (_, index) => ({ title: `Session ${index + 1}`, estimatedMinutes: 10 }));
+    await request(app.getHttpServer()).post(`/api/tasks/${id}/plan`).send({ subtasks }).expect(201);
+    const scheduled = database.task.update.mock.calls[0][0].data.subtasks.create;
+    expect(scheduled).toHaveLength(count);
+    expect(new Set(scheduled.map((step: { day: number }) => step.day)).size).toBe(30);
+    expect(scheduled[count - 1].day).toBe(30);
+    expect(scheduled.map(({ title, estimatedMinutes }: { title: string; estimatedMinutes: number }) => ({ title, estimatedMinutes }))).toEqual(subtasks);
+    expect(database.$transaction).toHaveBeenCalledTimes(1);
+    expect(database.$queryRaw).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([[30, 29], [14, 29], [3, 9]])('rejects %i-day / %i-step mismatch against the current locked task', async (days, count) => {
+    database.task.findUnique.mockResolvedValue({ ...task, days });
+    await request(app.getHttpServer()).post(`/api/tasks/${id}/plan`).send({
+      subtasks: Array.from({ length: count }, () => ({ title: 'Step', estimatedMinutes: 1 })),
+    }).expect(400);
+    expect(database.$queryRaw).toHaveBeenCalledTimes(1);
+    expect(database.task.update).not.toHaveBeenCalled();
+  });
+
+  it('preserves a previously saved short plan and its completion for a longer horizon', async () => {
+    database.task.findUnique.mockResolvedValue({ ...saved, days: 14 });
+    await request(app.getHttpServer()).get(`/api/tasks/${id}`).expect(200);
+    const response = await request(app.getHttpServer()).patch(`/api/subtasks/${stepId}`).send({ completed: true }).expect(200);
+    expect(response.body.subtasks).toHaveLength(3);
+    expect(database.subtask.update).toHaveBeenCalledWith({ where: { id: stepId }, data: { completed: true } });
+    await request(app.getHttpServer()).patch(`/api/tasks/${id}`).send({ days: 30 }).expect(409);
   });
 
   it.each([

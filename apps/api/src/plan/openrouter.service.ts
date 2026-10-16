@@ -5,7 +5,7 @@ import { BadGatewayException, GatewayTimeoutException, HttpException, Injectable
 import { z } from 'zod';
 import { invalidAiOutput, readModelResponse } from './model-response';
 import { planMessages, type TaskPrompt } from './plan-prompt';
-import { planJsonSchema, planProposalSchema, type ProposedSubtask } from './plan-schema';
+import { planJsonSchema, planProposalForDays, type ProposedSubtask } from './plan-schema';
 import { readTokenUsage, type UsageReporter } from './ai-call-diagnostics';
 
 const replySchema = z.object({
@@ -80,7 +80,7 @@ export class OpenRouterService {
           temperature: 0,
           max_tokens: maxTokens,
           messages: planMessages(task),
-          response_format: { type: 'json_schema', json_schema: { name: 'task_plan', strict: true, schema: planJsonSchema(task.minutesPerDay) } },
+          response_format: { type: 'json_schema', json_schema: { name: 'task_plan', strict: true, schema: planJsonSchema(task.days, task.minutesPerDay) } },
           provider: { require_parameters: true, allow_fallbacks: false },
         }),
       });
@@ -115,7 +115,7 @@ export class OpenRouterService {
     }
     try {
       const reply = replySchema.parse(parsed);
-      return planProposalSchema.parse(JSON.parse(reply.choices[0].message.content)).subtasks;
+      return planProposalForDays(task.days).parse(JSON.parse(reply.choices[0].message.content)).subtasks;
     } catch {
       throw invalidAiOutput();
     }

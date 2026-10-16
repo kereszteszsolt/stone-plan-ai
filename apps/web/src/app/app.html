@@ -62,9 +62,9 @@
             <div class="form-row">
               <div class="field">
                 <label for="task-days">Days</label>
-                <input id="task-days" type="number" formControlName="days" min="1" max="14" step="1" required
+                <input id="task-days" type="number" formControlName="days" min="1" max="30" step="1" required
                   [attr.aria-invalid]="form.controls.days.touched && form.controls.days.invalid" aria-describedby="days-hint">
-                <small id="days-hint" [class.error]="form.controls.days.touched && form.controls.days.invalid">A whole number from 1 to 14.</small>
+                <small id="days-hint" [class.error]="form.controls.days.touched && form.controls.days.invalid">A whole number from 1 to 30. Steps are spread across these days.</small>
               </div>
               <div class="field">
                 <label for="task-minutes">Minutes per day</label>

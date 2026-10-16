@@ -42,7 +42,7 @@ describe('OpenRouter adapter with mocked HTTP only', () => {
     expect(options?.redirect).toBe('error');
     const body = JSON.parse(String(options?.body));
     expect(body).toMatchObject({ model: 'test/structured-model', stream: false, max_tokens: 4096, provider: { require_parameters: true, allow_fallbacks: false } });
-    expect(body.response_format).toEqual({ type: 'json_schema', json_schema: { name: 'task_plan', strict: true, schema: planJsonSchema(30) } });
+    expect(body.response_format).toEqual({ type: 'json_schema', json_schema: { name: 'task_plan', strict: true, schema: planJsonSchema(task.days, task.minutesPerDay) } });
     expect(body.response_format.json_schema.schema.properties.subtasks.items.additionalProperties).toBe(false);
     expect(JSON.parse(body.messages[1].content)).toEqual({ ...task, totalMinutes: 60 });
     expect(JSON.stringify(body)).not.toContain('private-test-key');

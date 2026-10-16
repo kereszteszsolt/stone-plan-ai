@@ -1,6 +1,6 @@
 <section class="preview" aria-labelledby="preview-heading" [attr.aria-busy]="generating() || saving()">
   <h3 id="preview-heading">Plan preview</h3>
-  <p class="muted">Generate steps, then review and edit them.</p>
+  <p class="muted">Generate a {{ task().days }}-day plan with up to {{ task().minutesPerDay }} minutes per day, then review and edit the steps.</p>
   <div class="actions">
     <button type="button" class="primary" (click)="generate()" [disabled]="generating() || saving() || confirmingSave()">
       {{ generating() ? 'Generating…' : scheduled().length ? 'Generate again' : 'Generate plan' }}
@@ -40,7 +40,7 @@
     </div>
     <p [class.error]="overBudget()">Edited estimates: {{ totalMinutes() }} / {{ task().days * task().minutesPerDay }} available minutes.</p>
     @if (overBudget()) { <p class="error" role="alert">These estimates exceed your total time budget. Reduce them or edit the task's budget.</p> }
-    <p class="muted small">Day labels show the generated schedule. Saving recalculates days from your edited estimates. Generate again replaces this preview.</p>
+    <p class="muted small">Day labels show the generated schedule. Saving balances your edited steps across the available days without exceeding the daily limit. Generate again replaces this preview.</p>
     @if (confirmingSave()) {
       <div class="confirmation">
         <p>Save these {{ steps.length }} steps? Once saved, the plan and time budget are fixed. You can then mark steps complete.</p>

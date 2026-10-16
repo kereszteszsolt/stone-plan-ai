@@ -54,7 +54,7 @@ export class App implements OnInit {
   readonly form = this.formBuilder.group({
     title: ['', [Validators.required, Validators.maxLength(160)]],
     description: ['', Validators.maxLength(2000)],
-    days: [3, [Validators.required, Validators.min(1), Validators.max(14), integer]],
+    days: [3, [Validators.required, Validators.min(1), Validators.max(30), integer]],
     minutesPerDay: [30, [Validators.required, Validators.min(15), Validators.max(240), integer]],
   });
 

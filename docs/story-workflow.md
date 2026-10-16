@@ -6,6 +6,8 @@ Release 0.1 (`TFA-001`–`TFA-004`) is implemented and locally verified. [Releas
 
 Each story uses `Status`, `User story`, `Goal`, `Dependencies`, `Acceptance criteria`, and `Out of scope`. Valid states are `Planned`, `In progress`, and `Implemented`. Keep plans separate from shipped functionality.
 
+[TFA-007](releases/release-0.2-ai-provider-observability/stories/TFA-007-thirty-day-plans.md) is a separately requested Release 0.2 follow-up for 30-day horizons, task-aware step counts and balanced daily scheduling. It was explicitly approved and implemented with local verification on 2026-10-16; the user separately approved committing it on the same date. See its story and verification for mocked generation versus real database/browser evidence.
+
 ## Small delivery loop
 
 1. Read `AGENTS.md`, the active release map, and only one active story; state the likely files and focused checks briefly.

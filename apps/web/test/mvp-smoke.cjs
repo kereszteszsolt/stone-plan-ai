@@ -87,7 +87,8 @@ async function run() {
     await page.getByRole('heading', { name: 'Saved plan', exact: true }).waitFor();
     assert.equal(accepted.subtasks.length, preview.subtasks.length);
     assert.equal(accepted.subtasks[0].title, 'My accepted array practice');
-    assert.ok(accepted.subtasks.every((step, order) => step.day === 1 && step.order === order && step.estimatedMinutes === 1 && !step.completed));
+    assert.ok(accepted.subtasks.every((step, order) => step.day >= 1 && step.day <= 3 && step.order === order && step.estimatedMinutes === 1 && !step.completed));
+    assert.equal(new Set(accepted.subtasks.map((step) => step.day)).size, 3);
     assert.equal(await page.getByRole('button', { name: 'New task', exact: true }).isEnabled(), true);
     const checkbox = page.locator(`[data-subtask-id="${accepted.subtasks[0].id}"]`);
     await page.route(`**/api/subtasks/${accepted.subtasks[0].id}`, (route) => route.fulfill({ status: 500, contentType: 'application/json', body: '{}' }));

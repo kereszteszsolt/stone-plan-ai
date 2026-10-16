@@ -74,6 +74,33 @@ describe('Unsaved plan preview', () => {
     http.expectNone((request) => request.method !== 'GET');
   });
 
+  it('renders, edits and explicitly accepts a full 30-day preview with 60 steps', async () => {
+    fixture.componentRef.setInput('task', { ...task, days: 30 });
+    fixture.detectChanges();
+    const subtasks = Array.from({ length: 60 }, (_, order) => ({ title: `Session ${order + 1}`, estimatedMinutes: 10, day: Math.floor(order / 2) + 1, order }));
+    const pending = component.generate();
+    http.expectOne(url).flush({ subtasks });
+    await pending;
+    await fixture.whenStable();
+    expect(component.steps.length).toBe(60);
+    expect(fixture.nativeElement.textContent).toContain('30-day plan');
+    expect(fixture.nativeElement.textContent).toContain('Generated day 30');
+    const lastTitle = fixture.nativeElement.querySelector('#step-title-59') as HTMLInputElement;
+    lastTitle.value = 'Final review';
+    lastTitle.dispatchEvent(new Event('input', { bubbles: true }));
+    http.expectNone((request) => request.url.endsWith('/plan'));
+    component.requestSave();
+    expect(component.confirmingSave()).toBe(true);
+    const saving = component.confirmSave();
+    const request = http.expectOne(`/api/tasks/${task.id}/plan`);
+    expect(request.request.body.subtasks).toHaveLength(60);
+    expect(request.request.body.subtasks[59]).toEqual({ title: 'Final review', estimatedMinutes: 10 });
+    expect(request.request.body.subtasks.every((step: object) => !('day' in step) && !('order' in step))).toBe(true);
+    request.flush({ ...task, days: 30 });
+    await saving;
+    expect(component.error()).toBe('');
+  });
+
   it('flags invalid step values and excess edited total time', async () => {
     await generate();
     component.steps.at(0).controls.title.setValue('   ');

@@ -75,7 +75,7 @@ describe('Task CRUD HTTP boundary', () => {
     ['long description', { ...input, description: 'a'.repeat(2001) }],
     ['wrong description type', { ...input, description: [] }],
     ['zero days', { ...input, days: 0 }],
-    ['too many days', { ...input, days: 15 }],
+    ['too many days', { ...input, days: 31 }],
     ['fractional days', { ...input, days: 1.5 }],
     ['string days', { ...input, days: '3' }],
     ['too few minutes', { ...input, minutesPerDay: 14 }],
@@ -89,8 +89,14 @@ describe('Task CRUD HTTP boundary', () => {
     expect(database.task.create).not.toHaveBeenCalled();
   });
 
-  it.each([1, 14])('accepts the day boundary %i', async (days) => {
+  it.each([1, 14, 15, 30])('accepts the day boundary %i', async (days) => {
     await request(app.getHttpServer()).post('/api/tasks').send({ ...input, days }).expect(201);
+    expect(database.task.create.mock.calls[0][0].data.days).toBe(days);
+  });
+
+  it('updates an unsaved task to a 30-day horizon', async () => {
+    await request(app.getHttpServer()).patch(`/api/tasks/${id}`).send({ days: 30 }).expect(200);
+    expect(database.task.update.mock.calls[0][0].data).toEqual({ days: 30 });
   });
 
   it.each([15, 240])('accepts the minutes boundary %i', async (minutesPerDay) => {
@@ -102,7 +108,7 @@ describe('Task CRUD HTTP boundary', () => {
     expect(database.task.update.mock.calls[0][0].data).toEqual({ description: null });
   });
 
-  it.each([{}, { days: 0 }, { title: null }, { createdAt: '2026-01-01' }])('rejects invalid updates: %j', async (body) => {
+  it.each([{}, { days: 0 }, { days: 31 }, { days: 1.5 }, { days: '30' }, { title: null }, { createdAt: '2026-01-01' }])('rejects invalid updates: %j', async (body) => {
     await request(app.getHttpServer()).patch(`/api/tasks/${id}`).send(body).expect(400);
     expect(database.task.update).not.toHaveBeenCalled();
   });

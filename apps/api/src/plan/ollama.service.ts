@@ -3,7 +3,7 @@
 
 import { GatewayTimeoutException, HttpException, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { z } from 'zod';
-import { planJsonSchema, planProposalSchema, type ProposedSubtask } from './plan-schema';
+import { planJsonSchema, planProposalForDays, planStepBounds, type ProposedSubtask } from './plan-schema';
 import { planMessages, type TaskPrompt } from './plan-prompt';
 import { invalidAiOutput, readModelResponse } from './model-response';
 import { readTokenUsage, type UsageReporter } from './ai-call-diagnostics';
@@ -32,7 +32,7 @@ export class OllamaService {
     }
 
     const signal = AbortSignal.timeout(timeout);
-    const format = planJsonSchema(task.minutesPerDay);
+    const format = planJsonSchema(task.days, task.minutesPerDay);
     let raw: string;
     try {
       const response = await fetch(url, {
@@ -44,7 +44,7 @@ export class OllamaService {
           stream: false,
           think: false,
           format,
-          options: { temperature: 0, num_predict: 1024 },
+          options: { temperature: 0, num_predict: Math.max(1024, planStepBounds(task.days).max * 128) },
           messages: planMessages(task),
         }),
       });
@@ -70,7 +70,7 @@ export class OllamaService {
       const parsed: unknown = JSON.parse(raw);
       onUsage?.(readTokenUsage('ollama', parsed));
       const reply = replySchema.parse(parsed);
-      return planProposalSchema.parse(JSON.parse(reply.message.content)).subtasks;
+      return planProposalForDays(task.days).parse(JSON.parse(reply.message.content)).subtasks;
     } catch {
       throw invalidAiOutput();
     }
