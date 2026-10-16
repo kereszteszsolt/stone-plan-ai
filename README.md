@@ -62,7 +62,7 @@ The containers use Compose's default network and one named `postgres_data` volum
 
 **Ollama runs separately from the demo**, configured with `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, and `OLLAMA_TIMEOUT_MS`. Compose does not install a model or start Ollama. Task CRUD starts even when Ollama is unavailable; only an explicit **Generate plan** request contacts the model. The browser calls NestJS through `/api`.
 
-A hosted OpenRouter alternative has its own **optional post-MVP story, TFA-005**, but **is not part of Release 0.1 and is not implemented yet**. Ollama remains the default; the browser never calls an AI provider directly.
+The [planned Release 0.2](docs/releases/release-0.2-ai-provider-observability/README.md) contains **TFA-005 (OpenRouter)** and **TFA-006 (basic LLM call diagnostics)**. Neither is implemented yet. Ollama remains the default, no cloud fallback occurs, and the browser never calls an AI provider directly.
 
 ## Ollama plan preview
 
@@ -147,11 +147,13 @@ Verified commands and limits are recorded in the [verification record](docs/rele
 
 - [Architecture and API](docs/architecture.md)
 - [Release 0.1 stories](docs/releases/release-0.1-mvp/README.md)
-- [Optional post-MVP story: TFA-005 OpenRouter provider](docs/stories/TFA-005-openrouter-provider-integration.md)
+- [Release 0.2 planned stories: TFA-005 OpenRouter and TFA-006 LLM diagnostics](docs/releases/release-0.2-ai-provider-observability/README.md)
 - [Story and AI-assisted workflow](docs/story-workflow.md)
-- [Verification status](docs/releases/release-0.1-mvp/verification.md)
+- [Release 0.1 verification (completed)](docs/releases/release-0.1-mvp/verification.md)
+- [Release 0.2 verification (planned; not run)](docs/releases/release-0.2-ai-provider-observability/verification.md)
 - [Possible later improvements (not committed)](docs/future.md)
 - [Agent instructions](AGENTS.md)
+- [Codex roles and skills](.codex/README.md)
 
 ## License and author
 

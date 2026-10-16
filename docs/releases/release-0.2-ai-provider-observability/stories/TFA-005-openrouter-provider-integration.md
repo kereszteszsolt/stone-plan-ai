@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned — optional, post-MVP; not part of Release 0.1 and not assigned to a new release.
+Planned — Release 0.2; not part of the completed Release 0.1 MVP.
 
 ## User story
 
@@ -14,7 +14,7 @@ Add one backend-only OpenRouter option to the existing plan preview flow, while 
 
 ## Dependencies
 
-`TFA-004` implemented and verified. Start this story only after explicit user approval; do not change Release 0.1 acceptance criteria.
+`TFA-004` implemented and verified. Start this planned Release 0.2 story only with explicit user approval; do not change Release 0.1 acceptance criteria.
 
 ## Acceptance criteria
 
@@ -26,7 +26,7 @@ Add one backend-only OpenRouter option to the existing plan preview flow, while 
 - [ ] Handle missing credentials, unsupported model/structured-output responses, 401/403, rate limits, provider outages, timeouts, and invalid model JSON with helpful, non-sensitive API/UI errors; never log, echo, or ship the API key to the browser.
 - [ ] Focused mocked API tests cover provider selection, a valid OpenRouter response, invalid output, representative HTTP failures, and no-regression Ollama behavior; default automated tests do **not** make billable external API calls.
 - [ ] `docker compose up --build` still starts `web`, `api`, and `db` with Ollama as the default; README documents how to run OpenRouter mode using backend environment variables, including possible usage charges. If the user provides credentials and approves a live request, record one real OpenRouter smoke test; otherwise clearly mark that smoke test as not run.
-- [ ] Update this story's verification evidence only with commands actually executed and their outcomes; do not mark the OpenRouter integration as delivered while it remains documentation-only.
+- [ ] Record actual checks in Release 0.2 verification and do not mark this integration delivered while it remains documentation-only.
 
 ## Out of scope
 
@@ -34,7 +34,7 @@ No OpenAI/other direct-provider SDKs, LangChain, agent workflows, tool calling, 
 
 ## Verification evidence
 
-Not run. This story is planned only. Add actual test commands, results, and live-provider smoke status here during implementation. Update the [separate optional post-MVP status row](../releases/release-0.1-mvp/verification.md) without affecting Release 0.1 verification.
+Not run. This story is planned only. Record commands, results, and any approved live-provider smoke in the [Release 0.2 verification](../verification.md). Leave the completed Release 0.1 evidence unchanged.
 
 ## Reference
 

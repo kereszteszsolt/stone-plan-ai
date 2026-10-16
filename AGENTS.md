@@ -1,56 +1,51 @@
-# AGENTS.md
+# Codex engineering guide
 
-## Project
+## Repository and status
 
-**Task Flow AI** (`task-flow-ai`) is a small single-user task planner. The only committed release is **0.1 MVP**: Task CRUD, AI-generated editable plan preview, explicit plan save, completion tracking, and local persistence. **TFA-005** is a separate, optional OpenRouter story for after MVP completion; it is not a new release.
+Task Flow AI is a small NestJS/Angular app with PostgreSQL/Prisma and a separately running Ollama instance. Release 0.1 (`TFA-001`–`TFA-004`) is implemented and locally verified. Release 0.2 (`TFA-005` OpenRouter and `TFA-006` safe AI-call diagnostics) is **planned only**. Do not present planned functionality as shipped.
 
-This repository starts as a documentation baseline. **Do not claim that NestJS, Angular, PostgreSQL, Ollama, tests, or a UI work until their story is implemented and verified.**
+## Read only relevant context
 
-## Read only what you need
+1. Read this guide, `docs/story-workflow.md` and **one active, approved `TFA-*` story**. Check its release README for status/dependencies.
+2. Inspect affected files and tests. Read `docs/architecture.md` only for API, persistence, deployment or provider-boundary changes.
+3. Load `nestjs-angular` only for Angular, NestJS, Prisma or Docker work; load `llm-provider-integration` only for model/provider, schema or diagnostics work. Load both only when an approved change genuinely crosses both scopes.
+4. Do not preload every skill, reread completed stories or scan unrelated repositories.
 
-1. Read this file and the active `TFA-*` story (for TFA-005, read only `docs/stories/TFA-005-openrouter-provider-integration.md`).
-2. Read `docs/story-workflow.md` for scope and approvals.
-3. Read `docs/architecture.md` only when changing API, data, AI, or cross-app boundaries.
-4. Load `.agents/skills/mvp-delivery/SKILL.md` only for approved story implementation or verification; do not preload it for planning.
+## Technical boundaries
 
-Do not scan other repositories, bulk-load every document, or repeat repository analysis after scope is clear.
+- **Angular:** standalone components and Signals; `apps/web/src/app/tasks-api.service.ts` owns HTTP calls. Browser requests use same-origin `/api` via Nginx (Compose) or dev proxy.
+- **NestJS:** thin controllers, narrow services and one Prisma data-access boundary. Validate HTTP inputs and model outputs server-side with Zod. Keep AI prompt/HTTP calls out of controllers.
+- **PostgreSQL:** `Task` and `Subtask` via Prisma; explicit transactions and server-side scheduling protect saved state. Add schema changes only if a story requires them.
+- **Containers:** `web` (Angular/Nginx), `api` (NestJS) and `db` run in Docker Compose; only PostgreSQL needs a persistent named volume. Ollama stays outside Compose.
+- **LLM:** Ollama remains default. Only approved `TFA-005` may add an explicit OpenRouter option; never add implicit cloud fallback or leak API keys to Angular. `TFA-006` adds bounded diagnostics, not request/response logging or a hosted tracing stack.
+- Preserve explicit plan preview and acceptance; do not add unused layers, new services or extra UI state tooling.
 
-## Architecture boundaries
+## Minimal agent and skill policy
 
-- `apps/api`: one NestJS modular monolith; thin controllers, small services, Prisma persistence, and one Ollama adapter.
-- `apps/web`: standalone Angular UI, Signals for local state, and one typed REST API boundary; in the Docker demo, ship the built UI via Nginx with relative `/api` requests.
-- `infra`: one minimal Docker Compose project for Angular/Nginx (`web`), NestJS (`api`), and PostgreSQL (`db`), plus a small Nginx `/api` proxy config. Use the default Compose network and one named persistent database volume; Ollama stays outside Compose.
-- `docs`: Release 0.1 scope, stories, and evidence.
-- `Task` and `Subtask` are the only business entities; there is no `User`, `Project`, or generic workflow engine.
-- Validate HTTP input and AI responses at the backend. Do not trust model-generated JSON.
-- Use Ollama as a host-installed HTTP service reached through a configurable URL from the API container. Do not containerize or install Ollama as part of the demo; avoid exposing the model server on public interfaces. No AI framework, speculative multi-provider abstraction, tools, background jobs, or fallback to cloud APIs. Only approved post-MVP TFA-005 may add a small, explicitly selected OpenRouter adapter; Ollama remains the default and there is never automatic cloud fallback.
-- Generate a plan only on explicit request. Persist it only on explicit acceptance.
-- Do not add layers, utilities, libraries, or UI components without a concrete use in an active story.
+- **Default:** the main Codex session implements and reviews one approved story directly.
+- **Optional role:** `implementation_worker` is the **sole writer** only when the main session explicitly delegates one scoped story. Do not have the main session and worker edit in parallel.
+- **Skills:** `nestjs-angular` for full-stack contracts and persistence; `llm-provider-integration` for Ollama/OpenRouter, structured outputs and private-safe AI diagnostics.
+- Avoid parallel agents, duplicated research, repeated test runs and large context dumps. Use focused file reads and the smallest useful test set.
 
-## Token-efficient agent workflow
+## Story execution and evidence
 
-- **One writer at a time.** The main agent should normally implement directly; use `implementation_worker` only when delegated as the sole writer.
-- Do not spawn architect or reviewer subagents by default. Review the diff and targeted checks in the main flow.
-- Never run two agents on the same story or duplicate parallel research, test runs, or file edits.
-- Work on one approved `TFA-*` story at a time; complete and verify TFA-001–004 before starting optional TFA-005. Prefer small changes and focused checks.
-- Summarize the scope and checks briefly before implementation; ask for approval to start a new story.
-- A complex or risky change needs an explicit small plan and approval before edits.
-- Do not commit, push, reset, rewrite history, or start another story without separate user approval.
-- Report actual test commands and results; for TFA-005, keep details in its story and update the separate optional status row in Release 0.1 verification. Do not invent CI, screenshots, releases, or verification evidence.
+1. State the story, likely files and focused checks; request implementation approval before making story code changes.
+2. Implement only accepted criteria, in order. Ask before broad schema/security/infrastructure redesigns.
+3. Run focused unit or build tests; run Docker/real-model checks only when needed and approved. A cloud-provider smoke test may cost money.
+4. Record exact results or **not run** in the active release `verification.md` without modifying Release 0.1 history.
+5. Review the diff and propose a commit message. **Do not commit, push, rewrite history or begin another story without separate approval.**
 
-## Source comments and license headers
+## Source comments and SPDX
 
-Use short comments only when code does not explain the reason. Keep the following exact two-line SPDX header at the start of **new hand-written** TypeScript, JavaScript, SCSS, CSS, SQL, and shell files, in the appropriate comment syntax:
+Use short comments for non-obvious reasons, not code narration. Put this two-line SPDX header in new handwritten TypeScript, JavaScript, CSS, SCSS, SQL and shell sources using appropriate comment syntax:
 
 ```text
 SPDX-FileCopyrightText: 2026 Keresztes Zsolt <https://kereszteszsolt.hu>
 SPDX-License-Identifier: Apache-2.0
 ```
 
-For example, TypeScript files start with `// SPDX-FileCopyrightText: ...` and `// SPDX-License-Identifier: Apache-2.0`.
+No SPDX headers in Markdown, TOML, YAML, JSON, `.env.example`, Dockerfiles, generated files or lock files. Preserve third-party notices.
 
-Do not add headers to Markdown, JSON, TOML, YAML, `.env.example`, Dockerfiles, generated Angular/Nest files, lock files, or binary assets. Existing third-party license notices must be preserved. The complete license lives in `LICENSE`.
+## Scope boundary
 
-## Status and later ideas
-
-Release 0.1 has only TFA-001–004. Optional TFA-005 has its own standalone story and acceptance criteria but no release assignment; implement it only after the MVP and separate approval. `docs/future.md` contains other non-binding ideas, not a backlog. Do not build them or create releases without an explicit request.
+Release 0.2 remains planned until verified. `docs/future.md` is an idea list, **not** a backlog. Do not add agent workflows, authentication, calendar integrations, new releases or new dependencies without a separate request.
