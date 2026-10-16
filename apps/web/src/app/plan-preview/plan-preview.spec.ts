@@ -50,7 +50,7 @@ describe('Unsaved plan preview', () => {
     const pending = component.generate();
     const request = http.expectOne(url);
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Waiting for the local model…');
+    expect(fixture.nativeElement.textContent).toContain('Waiting for the model…');
     await component.generate();
     http.expectNone(url);
     request.flush(preview);
@@ -74,6 +74,33 @@ describe('Unsaved plan preview', () => {
     http.expectNone((request) => request.method !== 'GET');
   });
 
+  it('renders, edits and explicitly accepts a full 30-day preview with 60 steps', async () => {
+    fixture.componentRef.setInput('task', { ...task, days: 30 });
+    fixture.detectChanges();
+    const subtasks = Array.from({ length: 60 }, (_, order) => ({ title: `Session ${order + 1}`, estimatedMinutes: 10, day: Math.floor(order / 2) + 1, order }));
+    const pending = component.generate();
+    http.expectOne(url).flush({ subtasks });
+    await pending;
+    await fixture.whenStable();
+    expect(component.steps.length).toBe(60);
+    expect(fixture.nativeElement.textContent).toContain('30-day plan');
+    expect(fixture.nativeElement.textContent).toContain('Generated day 30');
+    const lastTitle = fixture.nativeElement.querySelector('#step-title-59') as HTMLInputElement;
+    lastTitle.value = 'Final review';
+    lastTitle.dispatchEvent(new Event('input', { bubbles: true }));
+    http.expectNone((request) => request.url.endsWith('/plan'));
+    component.requestSave();
+    expect(component.confirmingSave()).toBe(true);
+    const saving = component.confirmSave();
+    const request = http.expectOne(`/api/tasks/${task.id}/plan`);
+    expect(request.request.body.subtasks).toHaveLength(60);
+    expect(request.request.body.subtasks[59]).toEqual({ title: 'Final review', estimatedMinutes: 10 });
+    expect(request.request.body.subtasks.every((step: object) => !('day' in step) && !('order' in step))).toBe(true);
+    request.flush({ ...task, days: 30 });
+    await saving;
+    expect(component.error()).toBe('');
+  });
+
   it('flags invalid step values and excess edited total time', async () => {
     await generate();
     component.steps.at(0).controls.title.setValue('   ');
@@ -91,6 +118,15 @@ describe('Unsaved plan preview', () => {
     [504, 'OLLAMA_TIMEOUT', 'The local model took too long. Try again.'],
     [502, 'INVALID_AI_OUTPUT', 'The local model returned an invalid plan. Try again.'],
     [422, 'PLAN_EXCEEDS_BUDGET', 'The plan does not fit your time budget. Try again.'],
+    [503, 'AI_PROVIDER_NOT_CONFIGURED', 'Set the backend AI_PROVIDER to ollama or openrouter.'],
+    [503, 'OPENROUTER_NOT_CONFIGURED', 'Configure the backend OpenRouter key and model.'],
+    [503, 'OPENROUTER_ACCESS_DENIED', 'OpenRouter denied this request. Check the backend API key.'],
+    [503, 'OPENROUTER_CREDITS_REQUIRED', 'OpenRouter has insufficient credits. Check the account balance.'],
+    [503, 'OPENROUTER_MODEL_UNSUPPORTED', 'Check the model structured-output support.'],
+    [503, 'OPENROUTER_RATE_LIMITED', 'OpenRouter is rate limited. Wait a moment, then try again.'],
+    [503, 'OPENROUTER_UNAVAILABLE', 'OpenRouter is unavailable. Try again.'],
+    [504, 'OPENROUTER_TIMEOUT', 'OpenRouter took too long. Try again.'],
+    [502, 'OPENROUTER_OUTPUT_TRUNCATED', 'The model reached its output token limit. Increase the limit, then try again.'],
   ])('explains model/plan failure %s and allows retry', async (status, code, message) => {
     const pending = component.generate();
     http.expectOne(url).flush({ code, message }, { status, statusText: 'Error' });
@@ -103,15 +139,26 @@ describe('Unsaved plan preview', () => {
     expect(component.scheduled()).toHaveLength(3);
   });
 
-  it('preserves edited preview data if regeneration fails, and replaces it on success', async () => {
+  it.each([
+    [502, 'INVALID_AI_OUTPUT'], [503, 'OPENROUTER_RATE_LIMITED'],
+  ])('preserves edited preview data after %s/%s, and replaces it on success', async (status, code) => {
     await generate();
     component.steps.at(0).controls.title.setValue('Keep this draft');
     const pending = component.generate();
-    http.expectOne(url).flush({ code: 'INVALID_AI_OUTPUT', message: 'Invalid plan. Try again.' }, { status: 502, statusText: 'Error' });
+    http.expectOne(url).flush({ code, message: 'Unable to generate. Try again.' }, { status, statusText: 'Error' });
     await pending;
     expect(component.steps.at(0).controls.title.value).toBe('Keep this draft');
     await generate();
     expect(component.steps.at(0).controls.title.value).toBe(preview.subtasks[0].title);
+  });
+
+  it('keeps unknown server failures generic instead of displaying private details', async () => {
+    const pending = component.generate();
+    http.expectOne(url).flush({ code: 'OPENROUTER_PRIVATE_DETAIL', message: 'private provider response' }, { status: 503, statusText: 'Error' });
+    await pending;
+    await fixture.whenStable();
+    expect(fixture.nativeElement.textContent).toContain('Something went wrong. Please try again.');
+    expect(fixture.nativeElement.textContent).not.toContain('private provider response');
   });
 
   it('discards a preview without a persistence request', async () => {

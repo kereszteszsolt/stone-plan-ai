@@ -94,6 +94,57 @@ describe('Task screen', () => {
     expect(fixture.nativeElement.textContent).toContain('Task created.');
   });
 
+  it('accepts and creates a 30-day task through the form', async () => {
+    await list();
+    app.startCreate();
+    fixture.detectChanges();
+    const days = fixture.nativeElement.querySelector('#task-days') as HTMLInputElement;
+    expect(days.max).toBe('30');
+    days.value = '30';
+    days.dispatchEvent(new Event('input', { bubbles: true }));
+    app.form.controls.title.setValue('A month of practice');
+    const pending = app.saveTask();
+    const request = http.expectOne('/api/tasks');
+    expect(request.request.body.days).toBe(30);
+    request.flush({ ...task, days: 30 });
+    await pending;
+    expect(app.selectedTask()?.days).toBe(30);
+  });
+
+  it.each([0, 31, 1.5])('rejects invalid day count %s without sending a write', async (days) => {
+    await list();
+    app.startCreate();
+    app.form.setValue({ title: 'Practice', description: '', days, minutesPerDay: 30 });
+    await app.saveTask();
+    expect(app.form.controls.days.invalid).toBe(true);
+    http.expectNone((request) => request.method === 'POST');
+  });
+
+  it('updates a task to 30 days before plan acceptance', async () => {
+    await select();
+    app.startEdit();
+    app.form.controls.days.setValue(30);
+    const pending = app.saveTask();
+    const request = http.expectOne(`/api/tasks/${task.id}`);
+    expect(request.request.method).toBe('PATCH');
+    expect(request.request.body.days).toBe(30);
+    request.flush({ ...task, days: 30 });
+    await pending;
+    expect(app.selectedTask()?.days).toBe(30);
+  });
+
+  it('renders all 30 saved days and 60 completion controls', async () => {
+    const current = { ...task, days: 30, progress: { total: 60, completed: 0, percent: 0 }, subtasks: Array.from({ length: 60 }, (_, order) => ({
+      id: `step-${order}`, taskId: task.id, title: `Session ${order + 1}`, estimatedMinutes: 10,
+      day: Math.floor(order / 2) + 1, order, completed: false,
+    })) };
+    await select(current);
+    expect(app.dailyPlan()).toHaveLength(30);
+    expect(app.dailyPlan().every((day) => day.minutes === 20)).toBe(true);
+    expect(fixture.nativeElement.querySelectorAll('.subtask input')).toHaveLength(60);
+    expect(fixture.nativeElement.textContent).toContain('Day 30');
+  });
+
   it('keeps the draft and existing data when saving fails', async () => {
     await select();
     app.startEdit();

@@ -7,7 +7,7 @@ import { z } from 'zod';
 export const createTaskSchema = z.strictObject({
   title: z.string().trim().min(1, 'A title is required.').max(160, 'Use at most 160 characters.'),
   description: z.string().trim().max(2000, 'Use at most 2000 characters.').nullable().optional(),
-  days: z.number().int().min(1, 'Use at least 1 day.').max(14, 'Use at most 14 days.'),
+  days: z.number().int().min(1, 'Use at least 1 day.').max(30, 'Use at most 30 days.'),
   minutesPerDay: z.number().int().min(15, 'Use at least 15 minutes.').max(240, 'Use at most 240 minutes.'),
 });
 

@@ -9,11 +9,12 @@ import { TasksService } from './tasks/tasks.service';
 import { PlanPreviewController } from './plan/plan-preview.controller';
 import { PlanPreviewService } from './plan/plan-preview.service';
 import { OllamaService } from './plan/ollama.service';
+import { OpenRouterService } from './plan/openrouter.service';
 import { PlanController } from './plan/plan.controller';
 import { SubtasksController } from './tasks/subtasks.controller';
 
 @Module({
   controllers: [HealthController, TasksController, PlanPreviewController, PlanController, SubtasksController],
-  providers: [PrismaService, TasksService, PlanPreviewService, OllamaService],
+  providers: [PrismaService, TasksService, PlanPreviewService, OllamaService, OpenRouterService],
 })
 export class AppModule {}

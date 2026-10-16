@@ -14,8 +14,8 @@ function call(path, method = 'GET', body) {
   return fetch(`${baseUrl}${path}`, { method, headers: { 'Content-Type': 'application/json' },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
 }
-async function create() {
-  const response = await call('/tasks', 'POST', { title: `TFA-004 API smoke ${randomUUID()}`, days: 3, minutesPerDay: 30 });
+async function create(days = 3) {
+  const response = await call('/tasks', 'POST', { title: `Plan API smoke ${randomUUID()}`, days, minutesPerDay: 30 });
   assert.equal(response.status, 201);
   const task = await response.json();
   fixtureIds.push(task.id);
@@ -39,7 +39,7 @@ async function run() {
   assert.deepEqual(responses.map((response) => response.status).sort(), [201, 409]);
   const accepted = await read(initial.id);
   assert.equal(accepted.subtasks.length, 3);
-  assert.deepEqual(accepted.subtasks.map(({ day, order }) => [day, order]), [[1, 0], [1, 1], [2, 2]]);
+  assert.deepEqual(accepted.subtasks.map(({ day, order }) => [day, order]), [[1, 0], [2, 1], [3, 2]]);
   assert.deepEqual(accepted.progress, { total: 3, completed: 0, percent: 0 });
   assert.equal((await call(`/tasks/${initial.id}`, 'PATCH', { minutesPerDay: 60 })).status, 409);
   const completionPath = `/subtasks/${accepted.subtasks[0].id}`;
@@ -73,9 +73,20 @@ async function run() {
       assert.equal(current.minutesPerDay, 15);
     }
   }
+  const month = await create(30);
+  const monthSteps = Array.from({ length: 60 }, (_, index) => ({ title: `Daily session ${index + 1}`, estimatedMinutes: 10 }));
+  assert.equal((await call(`/tasks/${month.id}/plan`, 'POST', { subtasks: monthSteps.slice(0, 29) })).status, 400);
+  assert.deepEqual((await read(month.id)).subtasks, []);
+  assert.equal((await call(`/tasks/${month.id}/plan`, 'POST', { subtasks: monthSteps })).status, 201);
+  const acceptedMonth = await read(month.id);
+  assert.equal(acceptedMonth.days, 30);
+  assert.equal(acceptedMonth.subtasks.length, 60);
+  assert.deepEqual(acceptedMonth.subtasks.map(({ day, order }) => [day, order]), monthSteps.map((_, order) => [Math.floor(order / 2) + 1, order]));
+  assert.equal((await call(`/subtasks/${acceptedMonth.subtasks[59].id}`, 'PATCH', { completed: true })).status, 200);
+  assert.deepEqual((await read(month.id)).progress, { total: 60, completed: 1, percent: 2 });
   await call(`/tasks/${initial.id}`, 'DELETE');
   assert.equal(await prisma.subtask.count({ where: { taskId: initial.id } }), 0);
-  console.log('Live atomic plan acceptance, concurrent duplicate/budget guards, idempotent completion and cascade: passed');
+  console.log('Live atomic plan acceptance, 30-day/60-step persistence, concurrent duplicate/budget guards, idempotent completion and cascade: passed');
 }
 
 run().catch((error) => { console.error(error); process.exitCode = 1; }).finally(async () => {

@@ -120,12 +120,6 @@ Saved-plan screenshots at 1200 px/light, 390 px/dark and 320 px/light were captu
 
 One initial Angular save test accidentally exceeded its fixture's 60-minute total; the UI correctly blocked confirmation. Correcting that test estimate yielded the final 33/33 result. No targeted test failure remains. This closes the required Release 0.1 local demo flow; optional TFA-005 remains Planned and separate.
 
-## Optional post-MVP story (not part of Release 0.1)
+## Post-MVP planning note (does not change Release 0.1 proof)
 
-The row below is for tracking only. **TFA-005 does not block or change Release 0.1 completion.** Keep commands and detailed test results in the [TFA-005 story](../../stories/TFA-005-openrouter-provider-integration.md).
-
-| Story | Focused checks | Live OpenRouter smoke | Status |
-| --- | --- | --- | --- |
-| [TFA-005](../../stories/TFA-005-openrouter-provider-integration.md) | Not run | Not run | Planned (optional) |
-
-A live provider smoke test is optional and requires approved credentials; record it as **not run** if not authorized.
+At Release 0.1 closeout, TFA-005 was a standalone, optional planned story. It has since been assigned to [planned Release 0.2](../release-0.2-ai-provider-observability/README.md) alongside TFA-006. Their future results belong to [Release 0.2 verification](../release-0.2-ai-provider-observability/verification.md); neither is implemented yet or changes the completed MVP evidence above.

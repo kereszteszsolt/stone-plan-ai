@@ -7,13 +7,25 @@ export const planProposalSchema = z.strictObject({
   subtasks: z.array(z.strictObject({
     title: z.string().trim().min(1).max(160),
     estimatedMinutes: z.number().int().min(1).max(240),
-  })).min(3).max(8),
+  })).min(3).max(60),
 });
 
-export function planJsonSchema(minutesPerDay: number) {
+export function planStepBounds(days: number) {
+  return { min: Math.max(3, days), max: Math.max(8, 2 * days) };
+}
+
+export function planProposalForDays(days: number) {
+  const bounds = planStepBounds(days);
+  return planProposalSchema.extend({
+    subtasks: planProposalSchema.shape.subtasks.min(bounds.min).max(bounds.max),
+  });
+}
+
+export function planJsonSchema(days: number, minutesPerDay: number) {
+  const bounds = planStepBounds(days);
   const step = planProposalSchema.shape.subtasks.element;
   return z.toJSONSchema(planProposalSchema.extend({
-    subtasks: z.array(step.extend({ estimatedMinutes: step.shape.estimatedMinutes.max(minutesPerDay) })).min(3).max(8),
+    subtasks: z.array(step.extend({ estimatedMinutes: step.shape.estimatedMinutes.max(minutesPerDay) })).min(bounds.min).max(bounds.max),
   }));
 }
 export type ProposedSubtask = z.infer<typeof planProposalSchema>['subtasks'][number];

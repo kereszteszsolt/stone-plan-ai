@@ -37,7 +37,7 @@ async function run() {
   assert.equal(saved.days, 5);
   assert.equal(saved.minutesPerDay, 30);
 
-  const invalid = await call(`/${taskId}`, 'PATCH', { days: 15 });
+  const invalid = await call(`/${taskId}`, 'PATCH', { days: 31 });
   assert.equal(invalid.status, 400);
   assert.ok((await invalid.json()).message.length);
   assert.equal((await (await call(`/${taskId}`)).json()).days, 5);

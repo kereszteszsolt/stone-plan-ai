@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText: 2026 Keresztes Zsolt <https://kereszteszsolt.hu>
 // SPDX-License-Identifier: Apache-2.0
 
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma.service';
 import type { CreateTaskInput, UpdateTaskInput } from './task-input';
-import type { ProposedSubtask } from '../plan/plan-schema';
+import { planProposalForDays, type ProposedSubtask } from '../plan/plan-schema';
 import { schedulePlan } from '../plan/schedule-plan';
 
 const withSubtasks = { subtasks: { orderBy: { order: 'asc' as const } } };
@@ -73,7 +73,11 @@ export class TasksService {
       if (task.subtasks.length) {
         throw new ConflictException('A plan has already been saved. Select the task again to load it.');
       }
-      const scheduled = schedulePlan(subtasks, task.days, task.minutesPerDay);
+      const proposal = planProposalForDays(task.days).safeParse({ subtasks });
+      if (!proposal.success) {
+        throw new BadRequestException(proposal.error.issues.map((issue) => `subtasks: ${issue.message}`));
+      }
+      const scheduled = schedulePlan(proposal.data.subtasks, task.days, task.minutesPerDay);
       return tx.task.update({
         where: { id },
         data: { subtasks: { create: scheduled } },
