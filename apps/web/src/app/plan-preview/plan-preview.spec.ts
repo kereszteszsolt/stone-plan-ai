@@ -99,6 +99,7 @@ describe('Unsaved plan preview', () => {
     [503, 'OPENROUTER_RATE_LIMITED', 'OpenRouter is rate limited. Wait a moment, then try again.'],
     [503, 'OPENROUTER_UNAVAILABLE', 'OpenRouter is unavailable. Try again.'],
     [504, 'OPENROUTER_TIMEOUT', 'OpenRouter took too long. Try again.'],
+    [502, 'OPENROUTER_OUTPUT_TRUNCATED', 'The model reached its output token limit. Increase the limit, then try again.'],
   ])('explains model/plan failure %s and allows retry', async (status, code, message) => {
     const pending = component.generate();
     http.expectOne(url).flush({ code, message }, { status, statusText: 'Error' });

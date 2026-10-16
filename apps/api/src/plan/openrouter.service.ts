@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Keresztes Zsolt <https://kereszteszsolt.hu>
 // SPDX-License-Identifier: Apache-2.0
 
-import { GatewayTimeoutException, HttpException, Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { BadGatewayException, GatewayTimeoutException, HttpException, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { z } from 'zod';
 import { invalidAiOutput, readModelResponse } from './model-response';
 import { planMessages, type TaskPrompt } from './plan-prompt';
@@ -22,6 +22,7 @@ const replySchema = z.object({
   })).length(1),
 });
 const errorSchema = z.object({ error: z.object({ code: z.number().int() }) });
+const truncatedReplySchema = z.object({ choices: z.array(z.object({ finish_reason: z.literal('length') })).length(1) });
 
 function providerError(status: number): HttpException {
   if (status === 408 || status === 504) {
@@ -48,18 +49,20 @@ export class OpenRouterService {
     const apiKey = process.env['OPENROUTER_API_KEY']?.trim();
     const model = process.env['OPENROUTER_MODEL']?.trim();
     const timeout = Number(process.env['OPENROUTER_TIMEOUT_MS'] ?? 60000);
+    const maxTokens = Number(process.env['OPENROUTER_MAX_TOKENS'] ?? 4096);
     let url: URL;
     try {
       url = new URL(`${(process.env['OPENROUTER_BASE_URL'] ?? 'https://openrouter.ai/api/v1').replace(/\/+$/, '')}/chat/completions`);
       if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash ||
         !apiKey || /\s/.test(apiKey) || apiKey.startsWith('replace-with-') || !model || model.startsWith('replace-with-') ||
-        !Number.isInteger(timeout) || timeout < 1000 || timeout > 120000) {
+        !Number.isInteger(timeout) || timeout < 1000 || timeout > 120000 ||
+        !Number.isInteger(maxTokens) || maxTokens < 256 || maxTokens > 8192) {
         throw new Error('Invalid OpenRouter configuration');
       }
     } catch {
       throw new ServiceUnavailableException({
         code: 'OPENROUTER_NOT_CONFIGURED',
-        message: 'Configure the backend OPENROUTER_API_KEY, OPENROUTER_MODEL, URL, and timeout before generating with OpenRouter.',
+        message: 'Configure the backend OpenRouter API key, model, URL, timeout, and output token limit before generating.',
       });
     }
 
@@ -75,7 +78,7 @@ export class OpenRouterService {
           model,
           stream: false,
           temperature: 0,
-          max_tokens: 1024,
+          max_tokens: maxTokens,
           messages: planMessages(task),
           response_format: { type: 'json_schema', json_schema: { name: 'task_plan', strict: true, schema: planJsonSchema(task.minutesPerDay) } },
           provider: { require_parameters: true, allow_fallbacks: false },
@@ -104,6 +107,12 @@ export class OpenRouterService {
     // OpenRouter can report a provider failure inside an HTTP 200 response.
     const failure = errorSchema.safeParse(parsed);
     if (failure.success) throw providerError(failure.data.error.code);
+    if (truncatedReplySchema.safeParse(parsed).success) {
+      throw new BadGatewayException({
+        code: 'OPENROUTER_OUTPUT_TRUNCATED',
+        message: 'The model reached its output token limit before finishing the plan. Increase the backend output limit, then try again.',
+      });
+    }
     try {
       const reply = replySchema.parse(parsed);
       return planProposalSchema.parse(JSON.parse(reply.choices[0].message.content)).subtasks;

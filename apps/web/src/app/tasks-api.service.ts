@@ -89,7 +89,7 @@ export class TasksApiService {
         'OLLAMA_NOT_CONFIGURED', 'OLLAMA_UNAVAILABLE', 'OLLAMA_TIMEOUT', 'INVALID_AI_OUTPUT',
         'AI_PROVIDER_NOT_CONFIGURED', 'OPENROUTER_NOT_CONFIGURED', 'OPENROUTER_ACCESS_DENIED',
         'OPENROUTER_CREDITS_REQUIRED', 'OPENROUTER_MODEL_UNSUPPORTED', 'OPENROUTER_RATE_LIMITED',
-        'OPENROUTER_UNAVAILABLE', 'OPENROUTER_TIMEOUT',
+        'OPENROUTER_UNAVAILABLE', 'OPENROUTER_TIMEOUT', 'OPENROUTER_OUTPUT_TRUNCATED',
       ];
       const aiError = body && typeof body === 'object' && 'code' in body && typeof body.code === 'string' && aiCodes.includes(body.code);
       if (error.status >= 500 && !aiError) return 'Something went wrong. Please try again.';

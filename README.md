@@ -98,11 +98,14 @@ OPENROUTER_API_KEY=replace-with-your-private-api-key
 OPENROUTER_MODEL=replace-with-a-compatible-model-id
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
 OPENROUTER_TIMEOUT_MS=60000
+OPENROUTER_MAX_TOKENS=4096
 ```
 
 Replace the key and model placeholders. Choose an explicit model ID whose endpoint supports [OpenRouter JSON Schema structured outputs](https://openrouter.ai/docs/guides/features/structured-outputs). The backend sends `response_format: { type: "json_schema", json_schema: { strict: true, ... } }` with `provider.require_parameters: true` and `provider.allow_fallbacks: false`. Unsupported endpoints fail instead of silently dropping schema requirements. There is one request per generation and no automatic retries, repair, model switch, or fallback to Ollama.
 
 Apply Compose settings with `docker compose up --build -d --wait`, or restart the native API. The web/API/database services and PostgreSQL volume stay the same. `OPENROUTER_BASE_URL` is optional and defaults to the URL above; a custom HTTP(S) base URL receives the backend authorization header and task data. Redirects are rejected. `OPENROUTER_TIMEOUT_MS` accepts integers from 1000 to 120000 and covers the response body as well as the initial request; responses are capped at 64 KiB.
+
+`OPENROUTER_MAX_TOKENS` defaults to `4096` and accepts integers from `256` to `8192`. This bounds the requested output budget; for most reasoning providers, [reasoning and visible output share that budget](https://openrouter.ai/docs/guides/best-practices/reasoning-tokens). The former fixed 1024-token cap could be consumed before a reasoning model finished the JSON plan. A response with `finish_reason: "length"` now returns the safe `OPENROUTER_OUTPUT_TRUNCATED` error instead of the generic invalid-plan message; partial plans are still rejected. If this error appears, adjust the backend limit in `.env` and reapply Compose settings before manually retrying. A higher limit can increase per-request usage charges; no automatic retry or reasoning-mode/model change is performed.
 
 **OpenRouter generation sends the selected task's title, description, and time budget to a hosted provider and may incur usage charges.** Keep the key in backend environment variables, never in Angular settings or Git. The API returns fixed error messages for missing configuration, denied access, insufficient credits, unsupported structured output, rate limits, outages, timeouts, and invalid JSON; provider responses and credentials are not returned or logged.
 

@@ -17,7 +17,7 @@ const steps = [10, 20, 30].map((estimatedMinutes) => ({ title: 'PRIVATE_STEP_TIT
 const apiKey = 'sk-or-v1-PRIVATE_API_KEY';
 const path = `/api/tasks/${id}/plan-preview`;
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const keys = ['AI_PROVIDER', 'OLLAMA_BASE_URL', 'OLLAMA_MODEL', 'OLLAMA_TIMEOUT_MS', 'OPENROUTER_API_KEY', 'OPENROUTER_MODEL', 'OPENROUTER_BASE_URL', 'OPENROUTER_TIMEOUT_MS'] as const;
+const keys = ['AI_PROVIDER', 'OLLAMA_BASE_URL', 'OLLAMA_MODEL', 'OLLAMA_TIMEOUT_MS', 'OPENROUTER_API_KEY', 'OPENROUTER_MODEL', 'OPENROUTER_BASE_URL', 'OPENROUTER_TIMEOUT_MS', 'OPENROUTER_MAX_TOKENS'] as const;
 const originalEnvironment = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
 
 function reply(provider: AiProvider, counts?: object, content = JSON.stringify({ subtasks: steps })): Response {
@@ -53,6 +53,7 @@ describe('Plan-call diagnostics through the existing HTTP endpoint', () => {
     process.env['OPENROUTER_MODEL'] = 'fixture/small-model';
     process.env['OPENROUTER_BASE_URL'] = 'https://openrouter.test/api/v1';
     process.env['OPENROUTER_TIMEOUT_MS'] = '1000';
+    delete process.env['OPENROUTER_MAX_TOKENS'];
     database.task.findUnique.mockResolvedValue(task);
     log = jest.spyOn(Logger.prototype, 'log').mockImplementation(() => {});
     errorLog = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
@@ -177,6 +178,18 @@ describe('Plan-call diagnostics through the existing HTTP endpoint', () => {
       expect(values.map((value) => value.usage.inputTokens).sort()).toEqual([10, 20]);
       expect(fetch).toHaveBeenCalledTimes(2);
     });
+  });
+
+  it('logs output truncation once with the reported counts and no partial plan writes', async () => {
+    process.env['AI_PROVIDER'] = 'openrouter';
+    jest.mocked(fetch).mockResolvedValue(new Response(JSON.stringify({
+      choices: [{ finish_reason: 'length', message: { role: 'assistant', content: 'PRIVATE_PARTIAL_PLAN' } }],
+      usage: { prompt_tokens: 377, completion_tokens: 1024, total_tokens: 1401 },
+    })));
+    const response = await request(app.getHttpServer()).post(path).expect(502);
+    expect(response.body.code).toBe('OPENROUTER_OUTPUT_TRUNCATED');
+    expect(event(response, 'openrouter', 'failure', 'OPENROUTER_OUTPUT_TRUNCATED').usage).toEqual({ inputTokens: 377, outputTokens: 1024, totalTokens: 1401 });
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 
   it.each(['bad-body', 'missing-task', 'saved-plan', 'invalid-provider'])('does not invent a provider event for %s', async (failure) => {

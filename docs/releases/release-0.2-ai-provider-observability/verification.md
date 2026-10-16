@@ -108,4 +108,25 @@ This configuration-failure event had no usage to report. Mocked success events s
 - **Complete API suite and full stateful `sh infra/smoke.sh`: not rerun for TFA-006.** Verification used the 143 focused diagnostics/provider/preview tests and isolated Docker CRUD smoke; existing TFA-005 results above are historical, not a new complete-suite run.
 - No distributed trace, hosted dashboard, log of model payloads, cost measurement, schema migration, added dependency or new Compose service was introduced.
 
+## TFA-005 follow-up: bounded OpenRouter output budget, 2026-10-16
+
+The user reported `The model returned an invalid plan` while trying Mistral Large. Existing safe API logs showed an actual user-triggered request for `mistralai/mistral-large-4-0`: `INVALID_AI_OUTPUT`, 10077 ms, 377 input tokens, 1024 output tokens and 1401 total tokens. The adapter was requesting a fixed `max_tokens: 1024`. Exhausting exactly that ceiling strongly suggests an incomplete completion, potentially including reasoning; the previous event did not retain `finish_reason`, so the exact rejection cause is not proven and no raw task/reply was inspected or logged. This is a failed user attempt, not a successful live-provider smoke.
+
+The targeted correction adds backend `OPENROUTER_MAX_TOKENS` (default 4096, integer range 256–8192), passes it through Compose and documents it in both environment examples and README. Normalized `finish_reason: "length"` now returns `OPENROUTER_OUTPUT_TRUNCATED` (502), including when content is empty or parseable but incomplete. Angular recognizes the safe error, and the diagnostics allowlist retains the category and available numeric usage. Strict schema validation, the 64 KiB response cap, selected model, credentials, one-request behavior, no fallback and explicit plan saving are preserved. A higher configured budget permits more per-request usage; no retry or reasoning-mode change was added.
+
+Observed checks for this follow-up:
+
+| Check | Actual command / result |
+| --- | --- |
+| Targeted API regression tests, `apps/api` | `npm --ignore-scripts test -- --runTestsByPath test/diagnostics.spec.ts test/plan.spec.ts test/openrouter.spec.ts`: **3 suites, 153/153 tests passed**. All model requests mocked; includes default/custom/boundary/invalid output caps, truncated empty/partial/parseable content, preserved usage, one failure event and no partial-plan writes or retry. |
+| Angular, `apps/web` | `npm test`: **2 files, 44/44 tests passed**, including the safe truncation message and retry. |
+| API source/test type checking, `apps/api` | `node node_modules/typescript/bin/tsc --noEmit -p tsconfig.json`: passed. |
+| Compose and documentation assertions | Default/custom/empty `OPENROUTER_MAX_TOKENS` values were checked through `docker compose --env-file /dev/null config --format json` with dummy database credentials: backend-only budget, default Ollama and the unchanged three-service/one-volume layout passed. Markdown links/fences passed for 18 relative links; Release 0.1, schema, dependencies and Ollama adapter are unchanged. |
+| Production Docker update | `docker compose up --build -d --wait --wait-timeout 180`: API/web builds passed; all three normal project containers reported healthy and the existing database stayed running. No volume was removed. |
+| Runtime configuration and served frontend | A Node check via `docker compose exec -T api` verified `AI_PROVIDER=openrouter`, output cap `4096`, key presence and a model hash matching the current local Compose config. HTTP GET checks verified `http://localhost:8080/api/health`, the app shell, and `OPENROUTER_OUTPUT_TRUNCATED` in the served JavaScript bundle. No generation request was sent. |
+
+The initial runtime assertion compared the model with the earlier Mistral error event and failed that literal-name check. Inspection showed that the current local `.env` already selects `qwen/qwen3.8-flash`; the final check verified that the running API matches that current setting. The fix did not change the user's local model or credentials, and does not claim a live Mistral success after the update.
+
+Provider semantics were checked against [OpenRouter's max-token documentation](https://openrouter.ai/docs/api/reference/parameters) and [reasoning-budget documentation](https://openrouter.ai/docs/guides/best-practices/reasoning-tokens). They document that most reasoning providers share `max_tokens` between reasoning and visible text and can return `finish_reason: "length"` with empty content when that budget is consumed. The exact user request was not replayed. No new billable model call was approved or sent, and no live success is claimed after the change. The user separately approved a fix commit on 2026-10-16, before TFA-007 implementation.
+
 Do not add synthetic success metrics or rewrite [Release 0.1 verification](../release-0.1-mvp/verification.md). Keep separate test results for each story.
