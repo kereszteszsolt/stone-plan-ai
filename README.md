@@ -4,9 +4,9 @@
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-D22128?style=flat-square&labelColor=2B3137&logo=apache&logoColor=white)](LICENSE)
 
-**Status: Release 0.1 MVP implemented and locally verified.** TFA-001–004 cover the local stack, persistent task CRUD, an Ollama-generated editable preview, explicit plan acceptance, and durable completion tracking. The full Docker-launched flow passed, including page reload and Compose stop/start with the database volume retained.
+**Status: Releases 0.1 and 0.2 implemented and locally verified.** The MVP provides persistent task management, editable AI-generated plans, explicit approval, and progress tracking. Release 0.2 adds optional OpenRouter integration, basic LLM call diagnostics, and 1–30-day planning (TFA-005–007). See the [release verification](docs/releases/release-0.2-ai-provider-observability/verification.md) for tested scenarios and limitations; a live paid OpenRouter request is not claimed.
 
-Task Flow AI is a small, local-first, single-user task planner. It turns one goal into an editable AI-generated plan, assigns subtasks to a limited number of days, saves the accepted plan, and tracks progress.
+Task Flow AI is a small, self-hosted, single-user AI task planner. It breaks a goal into editable, time-boxed subtasks, distributes them across available days, and tracks progress. Ollama runs locally by default; OpenRouter is an explicitly selected, optional hosted provider.
 
 ## Release 0.1: MVP
 
@@ -20,7 +20,14 @@ The end-to-end flow is:
 
 Tasks can also be listed, edited, and deleted. The application has no user accounts and is intended for local use.
 
-**Not in the MVP:** authentication, multiple users, project hierarchy, RAG, embeddings, tool calling, MCP, multi-agent orchestration, cloud-provider fallback, calendar sync, realtime messaging, and background jobs.
+**Still out of scope:** authentication, multiple users, project hierarchy, RAG, embeddings, tool calling, MCP, multi-agent orchestration, automatic provider fallback, calendar sync, realtime messaging, and background jobs. OpenRouter can be configured, but it is never an automatic fallback.
+
+## Release 0.2: AI providers, monitoring, and longer plans
+
+- **Optional OpenRouter:** choose `AI_PROVIDER=ollama` (default) or `AI_PROVIDER=openrouter` through backend configuration. The browser does not receive provider credentials.
+- **Structured output validation:** both providers use a compatible schema, strict Zod validation, and the same deterministic scheduling logic.
+- **Basic LLM monitoring:** structured `ai_plan_call` events record outcomes, duration, request IDs, error categories, and available token counts without logging user content or credentials. This is not distributed tracing.
+- **Up to 30 days:** task-aware plan size (3–60 steps depending on horizon), daily time limits, and deterministic scheduling; see [TFA-007](docs/releases/release-0.2-ai-provider-observability/stories/TFA-007-thirty-day-plans.md).
 
 ## Technology stack
 
@@ -62,19 +69,17 @@ The containers use Compose's default network and one named `postgres_data` volum
 
 **Ollama runs separately from the demo**, configured with `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, and `OLLAMA_TIMEOUT_MS`. Compose does not install a model or start Ollama. Task CRUD starts even when Ollama is unavailable; only an explicit **Generate plan** request contacts the model. The browser calls NestJS through `/api`.
 
-Release 0.2 is implemented and locally verified: **TFA-005 (OpenRouter)** adds the optional backend provider described below; **TFA-006 (basic LLM call diagnostics)** adds safe outcome/latency events. See the [release map](docs/releases/release-0.2-ai-provider-observability/README.md) and [verification record](docs/releases/release-0.2-ai-provider-observability/verification.md) for mocked/local checks, live-provider limits and commit status. Ollama remains the default, no cloud fallback occurs, and the browser never calls an AI provider directly.
+Release 0.2 is implemented and locally verified: [TFA-005 and TFA-006](docs/releases/release-0.2-ai-provider-observability/README.md) add optional OpenRouter support and safe LLM-call diagnostics, with [TFA-007](docs/releases/release-0.2-ai-provider-observability/stories/TFA-007-thirty-day-plans.md) extending plans to 30 days. Ollama remains the default, there is no provider fallback, and the browser calls only the NestJS backend. See the [verification record](docs/releases/release-0.2-ai-provider-observability/verification.md) for tested scenarios and real-provider limitations.
 
 ## Ollama plan preview
 
 Before generating, set `OLLAMA_MODEL` in the root `.env` to an **already installed local model**. The local smoke used `qwen3:0.6b`. The container's default `OLLAMA_BASE_URL` is `http://host.docker.internal:11434`; a native API uses its own `.env` and usually `http://localhost:11434`.
 
-Tasks support **1–30 days** and **15–240 minutes per day**. Select a task and choose **Generate plan**. The backend requests structured JSON with a task-aware step count: at least `max(3, days)` and at most `max(8, 2 × days)` steps. A 3-day task allows 3–8 steps; a 14-day task allows 14–28; a 30-day task allows 30–60. Both Ollama and OpenRouter receive the days, daily minutes and total budget and are asked for useful progressive sessions, practice and review where appropriate, without filler.
-
-The backend validates trimmed titles and positive integer minute estimates, then balances work across the available days while preserving step order. Each step stays on one day, every day gets work when enough steps exist, and no day exceeds the daily limit. Unused daily minutes are allowed. An impossible ordered plan is rejected instead of shortened, padded or rearranged. This behavior is tracked in [TFA-007](docs/releases/release-0.2-ai-provider-observability/stories/TFA-007-thirty-day-plans.md); previously saved schedules are preserved.
+Tasks support **1–30 days** and **15–240 minutes per day**. Select a task and choose **Generate plan**. The backend requests structured JSON with a task-aware step count: at least `max(3, days)` and at most `max(8, 2 × days)` steps. Thus a 3-day task allows 3–8 steps, a 14-day task allows 14–28, and a 30-day task allows 30–60. The prompts include the time budget and ask for progressive work rather than filler. The backend validates step titles and positive integer minute estimates, then balances steps in order across the available days. A step stays on one day; no day exceeds its budget. An impossible ordered plan is rejected rather than shortened or rearranged. Both providers use the same constraints.
 
 Edit the titles and estimates directly in the preview. **The preview is unsaved:** it disappears on reload, task switching, task editing, or explicit discard. Generated day labels retain the original schedule while you edit estimates. **Generate again** replaces the preview only after a successful response; a failed attempt keeps your draft and shows a retryable error.
 
-`OLLAMA_TIMEOUT_MS` defaults to 60000 and accepts integer values from 1000 to 120000. Ollama's requested output budget grows with the possible step count from 1024 to at most 7680 tokens for a 30-day plan; larger plans can take longer to generate. Nginx waits up to 130 seconds so backend timeout errors can reach the UI. Generation errors distinguish an unavailable/unconfigured model, timeout, invalid response and insufficient time budget. There is one Ollama request per explicit generation, with no automatic repair or cloud fallback; cloud model tags are rejected.
+`OLLAMA_TIMEOUT_MS` defaults to 60000 and accepts integer values from 1000 to 120000. Ollama output budget grows with the permitted step count from 1024 up to 7680 tokens for a 30-day plan. Nginx waits up to 130 seconds so backend timeout errors can reach the UI. Generation errors distinguish an unavailable/unconfigured model, timeout, invalid response and insufficient time budget. There is one Ollama request per explicit generation, with no automatic repair or cloud fallback; cloud model tags are rejected.
 
 For a slow CPU-only model, increase `OLLAMA_TIMEOUT_MS` up to `120000` in the root `.env` and apply it with `docker compose up -d --wait`, then retry generation. A native API reads the setting from its own `.env` and needs restarting.
 
@@ -90,11 +95,11 @@ If the host model is not running, start your existing Ollama service, check the 
 
 ## Optional OpenRouter plan preview
 
-`AI_PROVIDER` accepts exactly `ollama` or `openrouter`; omitting it selects Ollama. An empty or unsupported value returns a configuration error when generating. Provider configuration is checked on generation, so task CRUD and saved plans remain available without a configured model. Ollama mode does not require any OpenRouter credentials.
+Set `AI_PROVIDER=openrouter` **explicitly** to use a hosted model. The default is `ollama`; changing providers does not add a container or change the frontend or database.
 
-To opt in, set these backend variables in the root `.env` for Compose, or in `apps/api/.env` for native development:
+Configure the following in the root `.env` for Docker Compose, or `apps/api/.env` for native development:
 
-```dotenv
+```env
 AI_PROVIDER=openrouter
 OPENROUTER_API_KEY=replace-with-your-private-api-key
 OPENROUTER_MODEL=replace-with-a-compatible-model-id
@@ -103,48 +108,27 @@ OPENROUTER_TIMEOUT_MS=60000
 OPENROUTER_MAX_TOKENS=4096
 ```
 
-Replace the key and model placeholders. Choose an explicit model ID whose endpoint supports [OpenRouter JSON Schema structured outputs](https://openrouter.ai/docs/guides/features/structured-outputs). The backend sends `response_format: { type: "json_schema", json_schema: { strict: true, ... } }` with `provider.require_parameters: true` and `provider.allow_fallbacks: false`. Unsupported endpoints fail instead of silently dropping schema requirements. There is one request per generation and no automatic retries, repair, model switch, or fallback to Ollama.
+Choose a model that supports [JSON Schema structured outputs](https://openrouter.ai/docs/features/structured-outputs). The backend requests strict schema compliance (`response_format` with `json_schema` and `strict: true`), requires provider-supported parameters, and disables provider fallback. Redirects are rejected, and responses are limited in size. Invalid or incomplete responses are rejected without automatic repair, provider switching, or paid retries. Only use a trusted custom `OPENROUTER_BASE_URL`: the backend sends the authorization header and task data to that endpoint.
 
-Apply Compose settings with `docker compose up --build -d --wait`, or restart the native API. The web/API/database services and PostgreSQL volume stay the same. `OPENROUTER_BASE_URL` is optional and defaults to the URL above; a custom HTTP(S) base URL receives the backend authorization header and task data. Redirects are rejected. `OPENROUTER_TIMEOUT_MS` accepts integers from 1000 to 120000 and covers the response body as well as the initial request; responses are capped at 64 KiB.
+`OPENROUTER_TIMEOUT_MS` accepts 1000–120000 milliseconds; `OPENROUTER_MAX_TOKENS` accepts 256–8192 and defaults to 4096. A provider response truncated by the output budget returns `OPENROUTER_OUTPUT_TRUNCATED`; no partial plan is saved. Raising token limits can increase usage charges, and long (up to 30-day) plans may require a larger budget. Apply configuration changes with `docker compose up --build -d --wait` or by restarting the native API.
 
-`OPENROUTER_MAX_TOKENS` defaults to `4096` and accepts integers from `256` to `8192`. This bounds the requested output budget; for most reasoning providers, [reasoning and visible output share that budget](https://openrouter.ai/docs/guides/best-practices/reasoning-tokens). The former fixed 1024-token cap could be consumed before a reasoning model finished the JSON plan. A response with `finish_reason: "length"` now returns the safe `OPENROUTER_OUTPUT_TRUNCATED` error instead of the generic invalid-plan message; partial plans are still rejected. If this error appears, adjust the backend limit in `.env` and reapply Compose settings before manually retrying. A higher limit can increase per-request usage charges; no automatic retry or reasoning-mode/model change is performed.
-
-A 30-day plan requires more JSON than a short plan. Its generation still respects the same configured OpenRouter ceiling; TFA-007 does not automatically raise it. If the response reaches that limit, the same safe truncation error is shown and no partial plan is accepted.
-
-**OpenRouter generation sends the selected task's title, description, and time budget to a hosted provider and may incur usage charges.** Keep the key in backend environment variables, never in Angular settings or Git. The API returns fixed error messages for missing configuration, denied access, insufficient credits, unsupported structured output, rate limits, outages, timeouts, and invalid JSON; provider responses and credentials are not returned or logged.
-
-The existing **Generate plan → review/edit → Save plan → Confirm and save** flow works with either provider. Both use the same prompt, strict Zod proposal validation, and deterministic server-side scheduling. Generation never saves subtasks. To return to local generation, set `AI_PROVIDER=ollama` and apply the backend configuration again. A real OpenRouter smoke test requires separate approval and credentials; the normal test suites mock every hosted call.
+**Privacy and cost:** using OpenRouter sends the selected task's title, description and time budget to a hosted provider and may incur charges. Keep `OPENROUTER_API_KEY` in backend environment variables, never in the browser or Git. Only one explicit generation request is issued, and a failed call does not modify saved plans. A successful **live OpenRouter request is not claimed by the normal mocked test suite**; running one needs separate credentials and approval.
 
 ## AI call diagnostics
 
-Inspect backend outcomes with:
+Inspect the NestJS API logs with:
 
 ```sh
 docker compose logs api
 ```
 
-Each selected provider attempt produces one NestJS log line containing a JSON `ai_plan_call` event. The `X-Request-ID` response header identifies the same attempt on both success and provider failure; the backend generates a fresh UUID and ignores caller-supplied IDs. The preview response body and Angular flow stay the same.
+Each selected provider attempt emits one structured `ai_plan_call` event. The generated `requestId` is also returned in an `X-Request-ID` response header. The event contains the selected `provider`, a sanitized `model` identifier, success/failure `outcome`, `durationMs`, a safe `errorCategory` on failures, and the numeric `usage` fields (`inputTokens`, `outputTokens`, `totalTokens`) when the provider actually returns them. Missing usage is not invented or calculated.
 
-| Field | Meaning |
-| --- | --- |
-| `event` | Always `ai_plan_call` |
-| `requestId` | Generated backend request UUID, also returned in `X-Request-ID` |
-| `provider` | Explicitly selected `ollama` or `openrouter` |
-| `model` | Configured model identifier, at most 160 safe characters; missing, unsafe, placeholder or credential-like values become `unknown` |
-| `outcome` | `success` after proposal validation and scheduling; otherwise `failure` |
-| `durationMs` | Non-negative whole milliseconds from provider invocation through parsing/validation/scheduling, excluding the initial database read |
-| `errorCategory` | A fixed safe API error code or `UNKNOWN_ERROR` on failure; `null` on success |
-| `usage` | Optional numeric `inputTokens`, `outputTokens`, and provider-reported `totalTokens`; absent counts stay absent |
-
-Ollama's [reported token counts](https://docs.ollama.com/api/chat), `prompt_eval_count` and `eval_count`, map to input/output counts. OpenRouter's [usage object](https://openrouter.ai/docs/api/reference/overview) provides `prompt_tokens`, `completion_tokens`, and optionally `total_tokens`. Only non-negative safe integers are retained; zero is a known value, malformed metadata is ignored, and no missing total or cost is calculated. Available counts are retained even when a returned proposal fails validation. Error response bodies are not read for usage.
-
-Task text, task IDs, prompts, raw model replies, provider error details, headers and API keys are excluded from these events. Only configured model identifiers are used, never provider-returned model text. Invalid HTTP input, missing tasks, already-saved plans and invalid provider selection produce no provider event because generation did not start. Missing provider configuration does produce one failure event for the selected attempt.
-
-These local request IDs and outcome events are **not distributed tracing or a Langfuse integration**: there are no spans across services, dashboards, collectors, content logs, automatic retries, or provider fallback.
+User tasks, prompts, raw responses, API keys, authorization headers and provider error bodies are **not logged**. These events provide basic local visibility; they are **not distributed tracing, Langfuse, or a monitoring dashboard**.
 
 ## Saving and completion
 
-Select **Save plan** after reviewing your edits. The confirmation freezes the edited fields; **Keep editing** returns to the draft without writing anything. **Confirm and save** sends only step titles and estimates. Inside one transaction, the backend checks the step count against the task's current stored day count, balances the edited estimates across those days using the same scheduler as preview, and saves all steps. If the count or estimates cannot fit, adjust the draft or unsaved task's budget and retry; a failed save keeps your draft.
+Select **Save plan** after reviewing your edits. The confirmation freezes the edited fields; **Keep editing** returns to the draft without writing anything. **Confirm and save** sends only step titles and estimates. Inside one transaction, the backend checks the task-specific step count against the currently stored day limit, recalculates the daily schedule under the saved time budget, and saves all steps. If the count or estimates cannot fit, adjust the draft or the unsaved task budget and retry; a failed save keeps your draft.
 
 Each task can have only one saved plan. Once accepted, the steps and time budget are fixed; the task's title and description can still be edited. To use a different plan, create another task. Concurrent saves are rejected rather than replacing or duplicating steps.
 
@@ -193,19 +177,19 @@ CHROME_EXECUTABLE=/path/to/local/chrome npm run test:smoke
 
 Use an installed Chrome or Chromium headless-shell executable. Playwright Core controls that local browser and does not install one. The test creates, edits, reloads and deletes its own task; checks failed-save recovery, confirmation and retry; and captures 1200/390/320-pixel forms in a temporary directory. Run it after the database smoke, since that smoke restarts PostgreSQL. On Windows, set `CHROME_EXECUTABLE` in your shell before running the npm command.
 
-For TFA-007, run `CHROME_EXECUTABLE=/path/to/local/chrome node test/horizon-smoke.cjs` from `apps/web`. It checks a 30-day form, a 60-step preview, real API/database acceptance, completion and reload, plus desktop/light and mobile/dark rendering. Only generation is intercepted with a fixed browser response, so this check makes no real model call and incurs no provider charge. Its temporary task is deleted and screenshots are written under the system temporary directory.
+For 30-day planning, run `CHROME_EXECUTABLE=/path/to/local/chrome node test/horizon-smoke.cjs` from `apps/web`. It covers the 30-day form, a 60-step fixture preview, real database acceptance and progress tracking, and responsive layouts, without a real LLM call. Screenshots are placed in a temporary directory.
 
 For a real configured Ollama preview, run `CHROME_EXECUTABLE=/path/to/local/chrome npm run test:preview-smoke` from `apps/web` after the database smoke. It makes one real generation, verifies editing without persistence and reload discard, checks four controlled UI error responses, and captures light/dark responsive previews. It removes its own task while preserving existing tasks.
 
 For the complete MVP flow, run `CHROME_EXECUTABLE=/path/to/local/chrome npm run test:mvp-smoke` from `apps/web` after the database smoke. It uses the rendered Docker UI to create a task, make one real Ollama request, edit estimates/titles, confirm the plan, toggle completion and reload. It also checks controlled save/completion failures and responsive themes. **This check stops and starts this project's entire Compose stack**, retains its database volume, then verifies the same accepted steps and completion state. It deletes only its own task and writes screenshots to a temporary directory.
 
-Verified commands and limits are recorded in the [Release 0.1 verification](docs/releases/release-0.1-mvp/verification.md) and [Release 0.2 verification](docs/releases/release-0.2-ai-provider-observability/verification.md).
+Verified commands and limits are recorded in [Release 0.1 verification](docs/releases/release-0.1-mvp/verification.md) and [Release 0.2 verification](docs/releases/release-0.2-ai-provider-observability/verification.md). These distinguish mocked tests and local Docker checks from any unrun live hosted-model checks.
 
 ## Documentation
 
 - [Architecture and API](docs/architecture.md)
 - [Release 0.1 stories](docs/releases/release-0.1-mvp/README.md)
-- [Release 0.2 stories: OpenRouter, LLM diagnostics and 30-day plans](docs/releases/release-0.2-ai-provider-observability/README.md)
+- [Release 0.2 stories: TFA-005 OpenRouter, TFA-006 LLM diagnostics, TFA-007 longer plans](docs/releases/release-0.2-ai-provider-observability/README.md)
 - [Story and AI-assisted workflow](docs/story-workflow.md)
 - [Release 0.1 verification (completed)](docs/releases/release-0.1-mvp/verification.md)
 - [Release 0.2 verification](docs/releases/release-0.2-ai-provider-observability/verification.md)
