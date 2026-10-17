@@ -12,9 +12,10 @@ import { OllamaService } from './plan/ollama.service';
 import { OpenRouterService } from './plan/openrouter.service';
 import { PlanController } from './plan/plan.controller';
 import { SubtasksController } from './tasks/subtasks.controller';
+import { LangfuseTracingService } from './plan/langfuse-tracing.service';
 
 @Module({
   controllers: [HealthController, TasksController, PlanPreviewController, PlanController, SubtasksController],
-  providers: [PrismaService, TasksService, PlanPreviewService, OllamaService, OpenRouterService],
+  providers: [PrismaService, TasksService, PlanPreviewService, OllamaService, OpenRouterService, LangfuseTracingService],
 })
 export class AppModule {}

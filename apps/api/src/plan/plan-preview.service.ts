@@ -7,7 +7,8 @@ import { TasksService } from '../tasks/tasks.service';
 import { OllamaService } from './ollama.service';
 import { OpenRouterService } from './openrouter.service';
 import { schedulePlan } from './schedule-plan';
-import { safeErrorCategory, safeModelIdentifier, type TokenUsage } from './ai-call-diagnostics';
+import { safeErrorCategory, safeModelIdentifier, type AiPlanCall, type TokenUsage } from './ai-call-diagnostics';
+import { LangfuseTracingService } from './langfuse-tracing.service';
 
 @Injectable()
 export class PlanPreviewService {
@@ -17,6 +18,7 @@ export class PlanPreviewService {
     private readonly tasks: TasksService,
     private readonly ollama: OllamaService,
     private readonly openrouter: OpenRouterService,
+    private readonly tracing: LangfuseTracingService,
   ) {}
 
   async generate(id: string, requestId = randomUUID()) {
@@ -32,7 +34,8 @@ export class PlanPreviewService {
       });
     }
     const generator = provider === 'ollama' ? this.ollama : this.openrouter;
-    const model = safeModelIdentifier(process.env[provider === 'ollama' ? 'OLLAMA_MODEL' : 'OPENROUTER_MODEL'], process.env['OPENROUTER_API_KEY']);
+    const model = safeModelIdentifier(process.env[provider === 'ollama' ? 'OLLAMA_MODEL' : 'OPENROUTER_MODEL'],
+      process.env['OPENROUTER_API_KEY'], process.env['LANGFUSE_PUBLIC_KEY'], process.env['LANGFUSE_SECRET_KEY']);
     const started = performance.now();
     let outcome: 'success' | 'failure' = 'failure';
     let errorCategory: string | null = null;
@@ -48,11 +51,13 @@ export class PlanPreviewService {
       errorCategory = safeErrorCategory(error);
       throw error;
     } finally {
-      this.logger.log(JSON.stringify({
+      const call: AiPlanCall = {
         event: 'ai_plan_call', requestId, provider, model, outcome,
         durationMs: Math.max(0, Math.round(performance.now() - started)), errorCategory,
         ...(usage ? { usage } : {}),
-      }));
+      };
+      this.logger.log(JSON.stringify(call));
+      this.tracing.record(call);
     }
   }
 }
