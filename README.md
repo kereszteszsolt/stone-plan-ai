@@ -4,7 +4,7 @@
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-D22128?style=flat-square&labelColor=2B3137&logo=apache&logoColor=white)](LICENSE)
 
-**Status: Releases 0.1 and 0.2 implemented and locally verified.** The MVP provides persistent task management, editable AI-generated plans, explicit approval, and progress tracking. Release 0.2 adds optional OpenRouter integration, basic LLM call diagnostics, and 1–30-day planning (TFA-005–007). See the [release verification](docs/releases/release-0.2-ai-provider-observability/verification.md) for tested scenarios and limitations; a live paid OpenRouter request is not claimed.
+**Status: Releases 0.1–0.3 implemented with local verification.** The MVP provides persistent task management, editable AI-generated plans, explicit approval, and progress tracking. Release 0.2 adds optional OpenRouter integration, basic LLM call diagnostics, and 1–30-day planning (TFA-005–007). Release 0.3 adds opt-in, metadata-only Langfuse tracing (TFA-008). See the [0.2](docs/releases/release-0.2-ai-provider-observability/verification.md) and [0.3 verification](docs/releases/release-0.3-langfuse-observability/verification.md) for evidence and limits; live OpenRouter generation and a hosted/cloud Langfuse dashboard trace are not claimed; self-hosted Langfuse was checked locally in Docker and the browser.
 
 Task Flow AI is a small, self-hosted, single-user AI task planner. It breaks a goal into editable, time-boxed subtasks, distributes them across available days, and tracks progress. Ollama runs locally by default; OpenRouter is an explicitly selected, optional hosted provider.
 
@@ -124,7 +124,65 @@ docker compose logs api
 
 Each selected provider attempt emits one structured `ai_plan_call` event. The generated `requestId` is also returned in an `X-Request-ID` response header. The event contains the selected `provider`, a sanitized `model` identifier, success/failure `outcome`, `durationMs`, a safe `errorCategory` on failures, and the numeric `usage` fields (`inputTokens`, `outputTokens`, `totalTokens`) when the provider actually returns them. Missing usage is not invented or calculated.
 
-User tasks, prompts, raw responses, API keys, authorization headers and provider error bodies are **not logged**. These events provide basic local visibility; they are **not distributed tracing, Langfuse, or a monitoring dashboard**.
+User tasks, prompts, raw responses, API keys, authorization headers and provider error bodies are **not logged**. These events provide basic local visibility and remain available independently of the optional Langfuse adapter below.
+
+## Optional Langfuse tracing (Release 0.3)
+
+Tracing is **disabled by default** (`LANGFUSE_ENABLED=false`). No Langfuse account, endpoint or keys are needed for health, task CRUD, Ollama or OpenRouter. The default Compose stack remains `web`, `api`, `db`. The optional [local deployment](#local-langfuse-with-the-project) starts Langfuse alongside this application in the same Compose project, using the same root `.env`.
+
+To activate it, create a private project in an existing Langfuse account or external installation, obtain that project's API keys, and set these values in the root `.env` for Compose, or `apps/api/.env` for native development:
+
+```dotenv
+LANGFUSE_ENABLED=true
+LANGFUSE_PUBLIC_KEY=pk-lf-your-project-public-key
+LANGFUSE_SECRET_KEY=sk-lf-your-project-secret-key
+LANGFUSE_BASE_URL=https://cloud.langfuse.com
+```
+
+Choose the **exact base URL and region of your existing project**; there is no implicit destination. Use HTTPS for remote endpoints. The example is the EU cloud endpoint; other regions or external installations require their own URL. Keys are backend-only and must stay out of Git, Angular and screenshots. Apply Compose changes with `docker compose up --build -d --wait`, or restart the native API. Missing/invalid settings disable tracing with a fixed `LANGFUSE_INVALID_CONFIGURATION` diagnostic while the application remains usable.
+
+Generate one plan normally, then open **Tracing** in the same Langfuse project and select the `ai-plan-generation` observation. Export is batched (up to five seconds before an ordinary batch flush). Match `metadata.requestId` to the `X-Request-ID` response header or the existing `ai_plan_call` log. The observation contains only the generated correlation ID, selected provider, sanitized model name, duration, success/failure, a fixed error category, and reported numeric token usage (`input`, `output`, `total`). Missing usage has `usageStatus: unknown`; absent counts are not estimated. SDK trace/span IDs, timestamps, a fixed service name and release/environment labels accompany these fields. No task IDs, task titles/descriptions, prompts, model replies, HTTP headers or raw errors are attached.
+
+Only the NestJS plan-generation path creates a manual SDK generation. There is no HTTP/database auto-tracing, Angular dashboard or additional model call. Existing provider selection, local logs, API responses, manual retries and explicit plan acceptance are unchanged. Recording/export failures do not fail a plan. Shutdown hooks flush buffered observations, and export requests have a two-second network timeout. SDK payload/debug logging is disabled even if SDK debug environment variables are set.
+
+**Privacy, access and cost:** enabling this sends technical metadata to the configured external project. Keep the project private, restrict membership and API-key access, and leave public trace sharing disabled. Review your account's retention/deletion settings and any paid ingestion/storage limits before enabling it. Langfuse may infer model costs from its own catalog; this app does not export cost estimates or measure answer quality. Tracing does not enable OpenRouter or authorize an extra billable model request.
+
+**Off switch:** set `LANGFUSE_ENABLED=false` and recreate/restart the API. The old process can flush observations already buffered during graceful shutdown; the new process creates no telemetry exporter. Remove the keys if unused. Disabling does not delete remote history: use the Langfuse project's deletion/retention controls for data already exported. Hosted Langfuse transmission/dashboard verification requires separate authorization and is **Not run** here; see [Release 0.3 verification](docs/releases/release-0.3-langfuse-observability/verification.md).
+
+SDK references: [manual observations](https://langfuse.com/docs/observability/sdk/instrumentation), [isolated tracing and configuration](https://langfuse.com/docs/observability/sdk/advanced-features).
+
+### Local Langfuse with the project
+
+All application and local Langfuse settings are in the root `.env`. Start both together from the repository root:
+
+```sh
+sh infra/langfuse.sh up
+```
+
+Open **http://localhost:8080** for Task Flow AI and **http://localhost:3000** for Langfuse. Log in with `LANGFUSE_ADMIN_EMAIL` and `LANGFUSE_ADMIN_PASSWORD` from `.env`. The existing local setup is configured with its original administrator, project keys and data. A new deployment must fill the optional Langfuse settings listed in `.env.example` before using this command; use independent random secrets and a 64-character hexadecimal encryption key. Initialization provisions the administrator/project once; changing initialization values does not rotate stored credentials.
+
+`infra/compose.langfuse.yaml` adds six local services to the application's `task-flow-ai` Compose project. The API sends metadata to `http://langfuse-web:3000` using `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` from the same `.env`; the overlay enables local tracing without changing the selected AI provider. There is no separate server folder, Compose project, client env file or external network prerequisite.
+
+```sh
+sh infra/langfuse.sh ps     # Combined project status
+sh infra/langfuse.sh logs   # Recent API and Langfuse logs
+sh infra/langfuse.sh down   # Stop/remove the combined stack; retain all volumes
+sh infra/langfuse.sh up     # Start the same stack/data again
+sh infra/langfuse.sh off    # Run the app without tracing; stop its local Langfuse services
+```
+
+`off` recreates the API with tracing disabled and empty keys/destination before stopping the local services. It retains `.env` and every data volume. The next `up` restores local tracing. Plain `docker compose up --build` uses only the original three application services; the default env template disables tracing.
+
+The app database has its original volume. Langfuse has five separate project-owned volumes for PostgreSQL, ClickHouse data/logs, Redis and MinIO, reusing the existing data. Keep `.env` with those volumes, especially encryption key, salt and passwords; avoid `down --volumes` when retaining data. Storage and worker use an internal network. Web and the API share a project-local bridge; only the dashboard is published on `127.0.0.1:3000`. Langfuse Web/Worker 4.63.0 and storage images retain their pinned versions. Deployment telemetry and the in-app agent are disabled; update checks/browser assets can still make external requests. Backup automation and HA are not configured.
+
+To verify ingestion without a live model or app database writes:
+
+```sh
+docker compose --env-file .env -f compose.yaml -f infra/compose.langfuse.yaml \
+  exec -T api node < apps/api/test/langfuse-smoke.cjs
+```
+
+This uses the actual SDK transport, a deterministic model fixture and authenticated metadata-only readback. Evidence and external check limits are in [Release 0.3 verification](docs/releases/release-0.3-langfuse-observability/verification.md).
 
 ## Saving and completion
 
@@ -183,16 +241,20 @@ For a real configured Ollama preview, run `CHROME_EXECUTABLE=/path/to/local/chro
 
 For the complete MVP flow, run `CHROME_EXECUTABLE=/path/to/local/chrome npm run test:mvp-smoke` from `apps/web` after the database smoke. It uses the rendered Docker UI to create a task, make one real Ollama request, edit estimates/titles, confirm the plan, toggle completion and reload. It also checks controlled save/completion failures and responsive themes. **This check stops and starts this project's entire Compose stack**, retains its database volume, then verifies the same accepted steps and completion state. It deletes only its own task and writes screenshots to a temporary directory.
 
-Verified commands and limits are recorded in [Release 0.1 verification](docs/releases/release-0.1-mvp/verification.md) and [Release 0.2 verification](docs/releases/release-0.2-ai-provider-observability/verification.md). These distinguish mocked tests and local Docker checks from any unrun live hosted-model checks.
+Verified commands and limits are recorded in [Release 0.1 verification](docs/releases/release-0.1-mvp/verification.md), [Release 0.2 verification](docs/releases/release-0.2-ai-provider-observability/verification.md), and [Release 0.3 verification](docs/releases/release-0.3-langfuse-observability/verification.md). These distinguish mocked tests and local Docker checks from any unrun live hosted-model or telemetry checks.
+
+[Release 0.3 — optional Langfuse tracing](docs/releases/release-0.3-langfuse-observability/README.md) adds metadata-only, opt-in LLM observability to the existing provider logs. It is not required for normal local use.
 
 ## Documentation
 
 - [Architecture and API](docs/architecture.md)
 - [Release 0.1 stories](docs/releases/release-0.1-mvp/README.md)
 - [Release 0.2 stories: TFA-005 OpenRouter, TFA-006 LLM diagnostics, TFA-007 longer plans](docs/releases/release-0.2-ai-provider-observability/README.md)
+- [Release 0.3 optional Langfuse tracing](docs/releases/release-0.3-langfuse-observability/README.md)
 - [Story and AI-assisted workflow](docs/story-workflow.md)
 - [Release 0.1 verification (completed)](docs/releases/release-0.1-mvp/verification.md)
 - [Release 0.2 verification](docs/releases/release-0.2-ai-provider-observability/verification.md)
+- [Release 0.3 verification](docs/releases/release-0.3-langfuse-observability/verification.md)
 - [Possible later improvements (not committed)](docs/future.md)
 - [Agent instructions](AGENTS.md)
 - [Codex roles and skills](.codex/README.md)
@@ -202,3 +264,16 @@ Verified commands and limits are recorded in [Release 0.1 verification](docs/rel
 Apache-2.0. Copyright © 2026 **Keresztes Zsolt** — [kereszteszsolt.hu](https://kereszteszsolt.hu).
 
 New hand-written source files use the two-line SPDX header defined in [AGENTS.md](AGENTS.md).
+
+## ☕ Ways to support
+
+**Explore ways to support the maintainer and their projects.**
+
+[https://kereszteszsolt.hu/ways-to-support/](https://kereszteszsolt.hu/ways-to-support/)
+
+<p align="center">
+  <a href="https://buymeacoffee.com/kereszteszsolt"><img src="docs/assets/orange-button.png" alt="Buy Me a Coffee" width="360"></a><br>
+  <strong>Every coffee counts! ☕❤️</strong>
+</p>
+
+---

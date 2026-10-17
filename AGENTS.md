@@ -2,7 +2,7 @@
 
 ## Repository and status
 
-Task Flow AI is a small NestJS/Angular app with PostgreSQL/Prisma and a separately running Ollama instance. Release 0.1 (`TFA-001`–`TFA-004`) and Release 0.2 (`TFA-005` OpenRouter and `TFA-006` safe AI-call diagnostics) are implemented and locally verified. Provider behavior was checked with mocks and isolated Docker checks; live OpenRouter generation was not run. Do not claim live cloud verification or a published release from local checks.
+Task Flow AI is a small NestJS/Angular app with PostgreSQL/Prisma and a separately running Ollama instance. Releases 0.1 (`TFA-001`–`TFA-004`) and 0.2 (`TFA-005`–`TFA-007`, including 30-day planning) are implemented and locally verified. Provider behavior was checked with mocks and isolated Docker checks; live OpenRouter generation was not run. **Release 0.3 (`TFA-008`) implements optional Langfuse tracing**, verified with local mocks and the separately approved self-hosted Docker setup, including real local ingestion and dashboard login. A hosted/cloud Langfuse trace was not run. Never claim live cloud verification, hosted telemetry or publication from documentation alone.
 
 ## Read only relevant context
 
@@ -16,15 +16,15 @@ Task Flow AI is a small NestJS/Angular app with PostgreSQL/Prisma and a separate
 - **Angular:** standalone components and Signals; `apps/web/src/app/tasks-api.service.ts` owns HTTP calls. Browser requests use same-origin `/api` via Nginx (Compose) or dev proxy.
 - **NestJS:** thin controllers, narrow services and one Prisma data-access boundary. Validate HTTP inputs and model outputs server-side with Zod. Keep AI prompt/HTTP calls out of controllers.
 - **PostgreSQL:** `Task` and `Subtask` via Prisma; explicit transactions and server-side scheduling protect saved state. Add schema changes only if a story requires them.
-- **Containers:** `web` (Angular/Nginx), `api` (NestJS) and `db` run in Docker Compose; only PostgreSQL needs a persistent named volume. Ollama stays outside Compose.
-- **LLM:** Ollama remains default. Only approved `TFA-005` may add an explicit OpenRouter option; never add implicit cloud fallback or leak API keys to Angular. `TFA-006` adds bounded diagnostics, not request/response logging or a hosted tracing stack.
+- **Containers:** The default Compose stack is `web` (Angular/Nginx), `api` (NestJS) and `db`, with one application PostgreSQL volume. The optional `infra/compose.langfuse.yaml` adds project-owned local Langfuse services and five separate data volumes. `sh infra/langfuse.sh up` manages the combined stack using only the root `.env`; there is no sibling deployment or external-network prerequisite. Preserve existing server secrets alongside their volumes. Ollama stays outside Compose.
+- **LLM:** Ollama remains default. Ollama and explicit OpenRouter selection are implemented; never add implicit cloud fallback or leak API keys to Angular. TFA-006 adds safe local diagnostics; only an approved TFA-008 may add opt-in Langfuse metadata export. No task/prompt/response contents in telemetry.
 - Preserve explicit plan preview and acceptance; do not add unused layers, new services or extra UI state tooling.
 
 ## Minimal agent and skill policy
 
 - **Default:** the main Codex session implements and reviews one approved story directly.
 - **Optional role:** `implementation_worker` is the **sole writer** only when the main session explicitly delegates one scoped story. Do not have the main session and worker edit in parallel.
-- **Skills:** `nestjs-angular` for full-stack contracts and persistence; `llm-provider-integration` for Ollama/OpenRouter, structured outputs and private-safe AI diagnostics.
+- **Skills:** `nestjs-angular` for full-stack contracts and persistence; `llm-provider-integration` for Ollama/OpenRouter, structured outputs, safe diagnostics and the optional Langfuse adapter.
 - Avoid parallel agents, duplicated research, repeated test runs and large context dumps. Use focused file reads and the smallest useful test set.
 
 ## Story execution and evidence
@@ -48,4 +48,4 @@ No SPDX headers in Markdown, TOML, YAML, JSON, `.env.example`, Dockerfiles, gene
 
 ## Scope boundary
 
-Release 0.2 remains incomplete until both stories are implemented and verified. `docs/future.md` is an idea list, **not** a backlog. Do not add agent workflows, authentication, calendar integrations, new releases or new dependencies without a separate request.
+Releases 0.2 and 0.3 are implemented with their recorded local verification limits. `docs/future.md` is an idea list, **not** a backlog. No new agent workflows, authentication, calendar integration or backend services without a separate request.

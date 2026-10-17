@@ -10,6 +10,16 @@ export interface TokenUsage {
   outputTokens?: number;
   totalTokens?: number;
 }
+export interface AiPlanCall {
+  event: 'ai_plan_call';
+  requestId: string;
+  provider: AiProvider;
+  model: string;
+  outcome: 'success' | 'failure';
+  durationMs: number;
+  errorCategory: string | null;
+  usage?: TokenUsage;
+}
 // Keep known usage even when proposal validation later rejects the model reply.
 export type UsageReporter = (usage: TokenUsage | undefined) => void;
 
@@ -36,10 +46,9 @@ export function readTokenUsage(provider: AiProvider, reply: unknown): TokenUsage
   return Object.keys(usage).length ? usage : undefined;
 }
 
-export function safeModelIdentifier(model: string | undefined, apiKey: string | undefined): string {
+export function safeModelIdentifier(model: string | undefined, ...apiKeys: (string | undefined)[]): string {
   const value = model?.trim() ?? '';
-  const secret = apiKey?.trim();
-  if (!/^[a-z0-9][a-z0-9._:/-]{0,159}$/i.test(value) || value.startsWith('replace-with-') || /^sk-/i.test(value) || (secret && value.includes(secret))) {
+  if (!/^[a-z0-9][a-z0-9._:/-]{0,159}$/i.test(value) || value.startsWith('replace-with-') || /^(?:sk-|pk-lf-)/i.test(value) || apiKeys.some((key) => key?.trim() && value.includes(key.trim()))) {
     return 'unknown';
   }
   return value;

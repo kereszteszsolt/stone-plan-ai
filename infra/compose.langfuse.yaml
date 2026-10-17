@@ -1,0 +1,185 @@
+# Optional local deployment; use with compose.yaml via sh infra/langfuse.sh up.
+# Deployment reference: https://langfuse.com/self-hosting/deployment/docker-compose
+
+x-langfuse-environment: &langfuse-environment
+  HOSTNAME: 0.0.0.0
+  DATABASE_URL: postgresql://langfuse:${LANGFUSE_DB_PASSWORD:?Configure the local .env}@langfuse-db:5432/langfuse
+  SALT: ${LANGFUSE_SALT:?Configure the local .env}
+  ENCRYPTION_KEY: ${LANGFUSE_ENCRYPTION_KEY:?Configure the local .env}
+  TELEMETRY_ENABLED: "false"
+  NEXT_TELEMETRY_DISABLED: "1"
+  LANGFUSE_IN_APP_AGENT_ENABLED: "false"
+  CLICKHOUSE_MIGRATION_URL: clickhouse://langfuse-clickhouse:9000
+  CLICKHOUSE_URL: http://langfuse-clickhouse:8123
+  CLICKHOUSE_USER: langfuse
+  CLICKHOUSE_PASSWORD: ${LANGFUSE_CLICKHOUSE_PASSWORD:?Configure the local .env}
+  CLICKHOUSE_CLUSTER_ENABLED: "false"
+  REDIS_HOST: langfuse-redis
+  REDIS_PORT: "6379"
+  REDIS_AUTH: ${LANGFUSE_REDIS_PASSWORD:?Configure the local .env}
+  REDIS_TLS_ENABLED: "false"
+  LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+  LANGFUSE_S3_EVENT_UPLOAD_REGION: auto
+  LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: langfuse
+  LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${LANGFUSE_S3_PASSWORD:?Configure the local .env}
+  LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://langfuse-minio:9000
+  LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+  LANGFUSE_S3_EVENT_UPLOAD_PREFIX: events/
+  LANGFUSE_S3_MEDIA_UPLOAD_BUCKET: langfuse
+  LANGFUSE_S3_MEDIA_UPLOAD_REGION: auto
+  LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID: langfuse
+  LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY: ${LANGFUSE_S3_PASSWORD:?Configure the local .env}
+  LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://langfuse-minio:9000
+  LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE: "true"
+  LANGFUSE_S3_MEDIA_UPLOAD_PREFIX: media/
+
+x-langfuse-dependencies: &langfuse-dependencies
+  langfuse-db:
+    condition: service_healthy
+  langfuse-clickhouse:
+    condition: service_healthy
+  langfuse-redis:
+    condition: service_healthy
+  langfuse-minio:
+    condition: service_healthy
+
+services:
+  api:
+    environment:
+      LANGFUSE_ENABLED: "true"
+      LANGFUSE_BASE_URL: http://langfuse-web:3000
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:?Configure the local .env}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:?Configure the local .env}
+    networks: [default, langfuse_ui]
+    depends_on:
+      langfuse-web:
+        condition: service_healthy
+
+  langfuse-web:
+    image: langfuse/langfuse:4@sha256:67f48d12a190e4ad585249c75ae1ce172b449de3dbbe7486b8179cd28e21408e
+    restart: unless-stopped
+    networks: [langfuse, langfuse_ui]
+    depends_on: *langfuse-dependencies
+    ports:
+      - 127.0.0.1:${LANGFUSE_PORT:-3000}:3000
+    environment:
+      <<: *langfuse-environment
+      NEXTAUTH_URL: http://localhost:${LANGFUSE_PORT:-3000}
+      NEXTAUTH_SECRET: ${LANGFUSE_AUTH_SECRET:?Configure the local .env}
+      AUTH_DISABLE_SIGNUP: "true"
+      LANGFUSE_DISABLE_SIGNUP_ONBOARDING: "true"
+      LANGFUSE_INIT_ORG_ID: task-flow-ai-local
+      LANGFUSE_INIT_ORG_NAME: Task Flow AI
+      LANGFUSE_INIT_PROJECT_ID: task-flow-ai
+      LANGFUSE_INIT_PROJECT_NAME: Task Flow AI
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:?Configure the local .env}
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LANGFUSE_SECRET_KEY:?Configure the local .env}
+      LANGFUSE_INIT_USER_EMAIL: ${LANGFUSE_ADMIN_EMAIL:-admin@task-flow-ai.local}
+      LANGFUSE_INIT_USER_NAME: Task Flow AI Admin
+      LANGFUSE_INIT_USER_PASSWORD: ${LANGFUSE_ADMIN_PASSWORD:?Configure the local .env}
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/api/public/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 90s
+
+  langfuse-worker:
+    image: langfuse/langfuse-worker:4@sha256:ca32a8fb2a214c7b5f42dd9c540c8072e41db659cb621f317911ce695ad6bca2
+    restart: unless-stopped
+    networks: [langfuse]
+    depends_on:
+      <<: *langfuse-dependencies
+      langfuse-web:
+        condition: service_healthy
+    environment: *langfuse-environment
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3030/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 90s
+
+  langfuse-db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    networks: [langfuse]
+    environment:
+      POSTGRES_DB: langfuse
+      POSTGRES_USER: langfuse
+      POSTGRES_PASSWORD: ${LANGFUSE_DB_PASSWORD:?Configure the local .env}
+    volumes:
+      - langfuse_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U langfuse -d langfuse']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  langfuse-clickhouse:
+    image: clickhouse/clickhouse-server:25.12@sha256:8a790dd3468db22b1d4e7b18a176f378ff5ff6053b9c48dd4ea1fa71a24c5ba6
+    restart: unless-stopped
+    networks: [langfuse]
+    user: "101:101"
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: langfuse
+      CLICKHOUSE_PASSWORD: ${LANGFUSE_CLICKHOUSE_PASSWORD:?Configure the local .env}
+    volumes:
+      - langfuse_clickhouse_data:/var/lib/clickhouse
+      - langfuse_clickhouse_logs:/var/log/clickhouse-server
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: [CMD-SHELL, 'wget --no-verbose --tries=1 --spider http://127.0.0.1:8123/ping || exit 1']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  langfuse-redis:
+    image: redis:7.4-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+    restart: unless-stopped
+    networks: [langfuse]
+    environment:
+      REDIS_PASSWORD: ${LANGFUSE_REDIS_PASSWORD:?Configure the local .env}
+    command: [sh, -c, 'exec redis-server --requirepass "$$REDIS_PASSWORD" --maxmemory-policy noeviction --appendonly yes']
+    volumes:
+      - langfuse_redis_data:/data
+    healthcheck:
+      test: [CMD-SHELL, 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep -q PONG']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  langfuse-minio:
+    image: cgr.dev/chainguard/minio:latest@sha256:c93745c56fccdaf0e5dcb88999a96a65a136428beb045ef5d546255a80d747a7
+    restart: unless-stopped
+    networks: [langfuse]
+    entrypoint: sh
+    command: [-c, 'mkdir -p /data/langfuse && exec minio server --address ":9000" --console-address ":9001" /data']
+    environment:
+      MINIO_ROOT_USER: langfuse
+      MINIO_ROOT_PASSWORD: ${LANGFUSE_S3_PASSWORD:?Configure the local .env}
+    volumes:
+      - langfuse_minio_data:/data
+    healthcheck:
+      test: [CMD, mc, ready, local]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+networks:
+  default:
+  langfuse:
+    internal: true
+  # Docker does not publish ports for a container attached only to internal networks.
+  langfuse_ui:
+
+volumes:
+  langfuse_postgres_data:
+  langfuse_clickhouse_data:
+  langfuse_clickhouse_logs:
+  langfuse_redis_data:
+  langfuse_minio_data:
