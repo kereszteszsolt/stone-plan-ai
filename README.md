@@ -185,14 +185,18 @@ For the complete MVP flow, run `CHROME_EXECUTABLE=/path/to/local/chrome npm run 
 
 Verified commands and limits are recorded in [Release 0.1 verification](docs/releases/release-0.1-mvp/verification.md) and [Release 0.2 verification](docs/releases/release-0.2-ai-provider-observability/verification.md). These distinguish mocked tests and local Docker checks from any unrun live hosted-model checks.
 
+**Next planned release:** [0.3 — optional Langfuse tracing](docs/releases/release-0.3-langfuse-observability/README.md) adds metadata-only, opt-in LLM observability to the existing provider logs. **Not implemented yet.** It is not required for normal local use.
+
 ## Documentation
 
 - [Architecture and API](docs/architecture.md)
 - [Release 0.1 stories](docs/releases/release-0.1-mvp/README.md)
 - [Release 0.2 stories: TFA-005 OpenRouter, TFA-006 LLM diagnostics, TFA-007 longer plans](docs/releases/release-0.2-ai-provider-observability/README.md)
+- [Release 0.3 planned Langfuse tracing](docs/releases/release-0.3-langfuse-observability/README.md)
 - [Story and AI-assisted workflow](docs/story-workflow.md)
 - [Release 0.1 verification (completed)](docs/releases/release-0.1-mvp/verification.md)
 - [Release 0.2 verification](docs/releases/release-0.2-ai-provider-observability/verification.md)
+- [Release 0.3 verification (not run)](docs/releases/release-0.3-langfuse-observability/verification.md)
 - [Possible later improvements (not committed)](docs/future.md)
 - [Agent instructions](AGENTS.md)
 - [Codex roles and skills](.codex/README.md)

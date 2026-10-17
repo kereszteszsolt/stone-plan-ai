@@ -2,7 +2,7 @@
 
 ## Releases and story order
 
-Release 0.1 (`TFA-001`–`TFA-004`) is implemented and locally verified. [Release 0.2](releases/release-0.2-ai-provider-observability/README.md) is also implemented with mocked/local checks: [TFA-005](releases/release-0.2-ai-provider-observability/stories/TFA-005-openrouter-provider-integration.md) adds OpenRouter and [TFA-006](releases/release-0.2-ai-provider-observability/stories/TFA-006-basic-llm-observability.md) adds safe provider/latency logs. See the release verification for live-provider limits and commit approvals. Start any new story only with clear user approval; do not reopen Release 0.1 or pre-implement later ideas.
+Release 0.1 (`TFA-001`–`TFA-004`) is implemented and locally verified. [Release 0.2](releases/release-0.2-ai-provider-observability/README.md) is also implemented with mocked/local checks: [TFA-005](releases/release-0.2-ai-provider-observability/stories/TFA-005-openrouter-provider-integration.md) adds OpenRouter and [TFA-006](releases/release-0.2-ai-provider-observability/stories/TFA-006-basic-llm-observability.md) adds safe provider/latency logs. See the release verification for live-provider limits and commit approvals. [Release 0.3](releases/release-0.3-langfuse-observability/README.md) contains the **planned-only** TFA-008 opt-in Langfuse trace adapter; it is not shipped behavior. Start any new story only with clear user approval; do not reopen completed releases or pre-implement later ideas.
 
 Each story uses `Status`, `User story`, `Goal`, `Dependencies`, `Acceptance criteria`, and `Out of scope`. Valid states are `Planned`, `In progress`, and `Implemented`. Keep plans separate from shipped functionality.
 
@@ -23,8 +23,8 @@ For a risky schema, security, migration, or cross-app redesign, get approval for
 
 Do not invent test counts, screenshots, cost totals, secrets, hosted availability, or results. Criteria stay unchecked until verified. A real OpenRouter call can cost money and requires explicit credentials and approval; record **not run** otherwise. TFA-006 diagnostics must not log user task text, prompts, raw model replies, or API keys.
 
-Release 0.2 is complete only after both stories are implemented with focused checks, the unchanged default-Ollama Compose workflow still works, and the release verification record reflects reality.
+Release 0.2 is complete with three implemented stories and evidence. Release 0.3 closes only after TFA-008 tests, default-Ollama regression checks and honest verification records. A real hosted Langfuse smoke test needs separate endpoint/data-sharing approval and may remain **Not run**.
 
 ## Boundaries
 
-The six ideas in [future.md](future.md) have no stories, release, or acceptance criteria. Do not plan or implement them without a new request. Do not add a hosted observability stack, extra agent, database schema, or new Compose service to the small Release 0.2 changes.
+The six ideas in [future.md](future.md) have no stories, release, or acceptance criteria. Do not plan or implement them without a new request. Do not add a hosted observability stack, extra agent, database schema or new Compose service for TFA-008; use an existing external endpoint only if explicitly configured.
