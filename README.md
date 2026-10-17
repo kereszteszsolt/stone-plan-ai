@@ -202,3 +202,16 @@ Verified commands and limits are recorded in [Release 0.1 verification](docs/rel
 Apache-2.0. Copyright © 2026 **Keresztes Zsolt** — [kereszteszsolt.hu](https://kereszteszsolt.hu).
 
 New hand-written source files use the two-line SPDX header defined in [AGENTS.md](AGENTS.md).
+
+## ☕ Ways to support
+
+**Explore ways to support the maintainer and their projects.**
+
+[https://kereszteszsolt.hu/ways-to-support/](https://kereszteszsolt.hu/ways-to-support/)
+
+<p align="center">
+  <a href="https://buymeacoffee.com/kereszteszsolt"><img src="docs/assets/orange-button.png" alt="Buy Me a Coffee" width="360"></a><br>
+  <strong>Every coffee counts! ☕❤️</strong>
+</p>
+
+---
