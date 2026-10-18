@@ -194,7 +194,7 @@
       }
       <ng-template #aboutAction let-link>
         <a class="about-action" [class.coffee-action]="link.id === 'coffee'" [href]="link.href"
-          [appTooltip]="link.description + '\n' + link.href" target="_blank" rel="noopener noreferrer">
+          [appTooltip]="link.description + '\n' + link.href" [appTooltipWidth]="link.id === 'support' || link.id === 'coffee' ? 384 : undefined" target="_blank" rel="noopener noreferrer">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             @switch (link.icon) {
               @case ('globe') { <circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c5 5 5 13 0 18-5-5-5-13 0-18Z"/> }

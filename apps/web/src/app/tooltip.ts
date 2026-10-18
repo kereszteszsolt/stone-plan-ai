@@ -19,6 +19,7 @@ let nextTooltipId = 0;
 export class Tooltip implements OnDestroy {
   private static active: Tooltip | null = null;
   readonly appTooltip = input.required<string>();
+  readonly appTooltipWidth = input<number>();
   private readonly anchor = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly document = inject(DOCUMENT);
   private bubble: HTMLDivElement | null = null;
@@ -56,7 +57,10 @@ export class Tooltip implements OnDestroy {
     const rightEdge = Math.min(view.innerWidth - 10, (bounds?.right ?? view.innerWidth) - 10);
     const topEdge = Math.max(10, (bounds?.top ?? 0) + 10);
     const bottomEdge = Math.min(view.innerHeight - 10, (bounds?.bottom ?? view.innerHeight) - 10);
-    bubble.style.maxWidth = `${Math.max(0, Math.min(304, rightEdge - leftEdge))}px`;
+    const preferredWidth = this.appTooltipWidth();
+    const maxWidth = Math.max(0, Math.min(preferredWidth ?? 304, rightEdge - leftEdge));
+    bubble.style.maxWidth = `${maxWidth}px`;
+    if (preferredWidth) bubble.style.width = `${maxWidth}px`;
     const target = this.anchor.getBoundingClientRect();
     const size = bubble.getBoundingClientRect();
     const center = target.left + target.width / 2;

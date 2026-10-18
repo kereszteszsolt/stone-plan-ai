@@ -25,7 +25,7 @@ h3 { font-size: 1.05rem; }
 .task-list > ul { margin-top: 1.25rem; }
 .sidebar-footer { position: relative; flex: 0 0 auto; margin-top: auto; padding: 1.25rem 1.5rem; }
 .sidebar-footer::before { top: 0; left: 1.5rem; right: 1.5rem; height: 1px; background: linear-gradient(90deg, transparent, var(--border) 25%, var(--border) 75%, transparent); }
-.license-link { color: var(--link); white-space: nowrap; text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: .2rem; }
+.license-link { color: var(--link); white-space: nowrap; text-decoration: none; text-underline-offset: .2rem; }
 .attribution { display: grid; gap: .35rem; padding: .25rem 0; font-size: .72rem; line-height: 1.5; }
 .attribution a { width: fit-content; color: var(--link); font-size: .72rem; text-decoration: none; overflow-wrap: anywhere; }
 .attribution a:hover { text-decoration: underline; text-underline-offset: .2rem; }
