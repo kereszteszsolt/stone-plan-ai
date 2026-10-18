@@ -1,6 +1,6 @@
 ---
 name: nestjs-angular
-description: Use for Task Flow AI changes in NestJS REST endpoints, Angular components and Signals, Prisma/PostgreSQL persistence, Nginx or Docker Compose.
+description: Use for StonePlan AI changes in NestJS REST endpoints, Angular components and Signals, Prisma/PostgreSQL persistence, Nginx or Docker Compose.
 ---
 
 # NestJS / Angular delivery

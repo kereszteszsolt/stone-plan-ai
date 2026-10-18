@@ -8,7 +8,7 @@ const { tmpdir } = require('node:os');
 const { join } = require('node:path');
 const { chromium } = require('playwright-core');
 
-const baseUrl = process.env.TASK_FLOW_SMOKE_URL || 'http://localhost:8080';
+const baseUrl = process.env.STONE_PLAN_SMOKE_URL || process.env.TASK_FLOW_SMOKE_URL || 'http://localhost:33050';
 assert.ok(process.env.CHROME_EXECUTABLE, 'Set CHROME_EXECUTABLE to a local Chrome/headless-shell executable.');
 
 async function run() {
@@ -16,7 +16,7 @@ async function run() {
   const context = await browser.newContext({ viewport: { width: 1200, height: 900 }, colorScheme: 'light' });
   const page = await context.newPage();
   page.setDefaultTimeout(10000);
-  const artifacts = mkdtempSync(join(tmpdir(), 'task-flow-ai-tfa003-'));
+  const artifacts = mkdtempSync(join(tmpdir(), 'stone-plan-ai-tfa003-'));
   const title = `Learn JavaScript array methods · TFA-003 ${randomUUID()}`;
   const pageErrors = [];
   let id;

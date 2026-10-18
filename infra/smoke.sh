@@ -4,7 +4,7 @@
 
 set -eu
 cd "$(dirname "$0")/.."
-web_url="${TASK_FLOW_SMOKE_URL:-http://localhost:8080}"
+web_url="${STONE_PLAN_SMOKE_URL:-${TASK_FLOW_SMOKE_URL:-http://localhost:33050}}"
 
 health="$(curl --fail --silent --show-error "$web_url/api/health")"
 [ "$health" = '{"status":"ok"}' ]

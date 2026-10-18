@@ -1,6 +1,6 @@
 # Codex roles and skills
 
-Task Flow AI intentionally has **one optional Codex agent**: `implementation_worker`, a single write-owning implementation delegate. Normally the main session does the work directly. There is no default architect/reviewer chain or parallel agent execution.
+StonePlan AI intentionally has **one optional Codex agent**: `implementation_worker`, a single write-owning implementation delegate. Normally the main session does the work directly. There is no default architect/reviewer chain or parallel agent execution.
 
 Load repository skills only for matching technology changes:
 

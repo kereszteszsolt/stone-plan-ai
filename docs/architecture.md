@@ -8,7 +8,7 @@ TFA-005 adds an explicitly selected backend OpenRouter adapter. Ollama remains t
 
 ```mermaid
 flowchart TD
-    B[Browser localhost:8080] --> WEB[web: Nginx + Angular static files]
+    B[Browser localhost:33050] --> WEB[web: Nginx + Angular static files]
     WEB -->|/api/* reverse proxy| API[api: NestJS]
     API -->|Prisma, db:5432| DB[(db: PostgreSQL)]
     DB --- VOL[(Dedicated postgres data volume)]

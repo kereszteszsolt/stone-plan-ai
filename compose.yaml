@@ -1,11 +1,11 @@
-name: task-flow-ai
+name: stone-plan-ai
 
 services:
   db:
     image: postgres:17-alpine
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-taskflow}
-      POSTGRES_USER: ${POSTGRES_USER:-taskflow}
+      POSTGRES_DB: ${POSTGRES_DB:-stoneplan}
+      POSTGRES_USER: ${POSTGRES_USER:-stoneplan}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Copy .env.example to .env and set a local password}
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -20,7 +20,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      DATABASE_URL: postgresql://${POSTGRES_USER:-taskflow}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-taskflow}?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-stoneplan}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-stoneplan}?schema=public
       AI_PROVIDER: ${AI_PROVIDER-ollama}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-replace-with-your-installed-model-name}
@@ -47,10 +47,11 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
     ports:
-      - 127.0.0.1:${WEB_PORT:-8080}:80
+      - 127.0.0.1:${WEB_PORT:-33050}:80
     depends_on:
       api:
         condition: service_healthy
 
 volumes:
   postgres_data:
+    name: ${POSTGRES_VOLUME_NAME:-${COMPOSE_PROJECT_NAME}_postgres_data}

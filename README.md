@@ -1,4 +1,4 @@
-# Task Flow AI
+# StonePlan AI
 
 > **Break goals into practical steps.**
 
@@ -6,7 +6,7 @@
 
 **Status: Releases 0.1 and 0.2 implemented and locally verified.** The MVP provides persistent task management, editable AI-generated plans, explicit approval, and progress tracking. Release 0.2 adds optional OpenRouter integration, basic LLM call diagnostics, and 1–30-day planning (TFA-005–007). See the [release verification](docs/releases/release-0.2-ai-provider-observability/verification.md) for tested scenarios and limitations; a live paid OpenRouter request is not claimed.
 
-Task Flow AI is a small, self-hosted, single-user AI task planner. It breaks a goal into editable, time-boxed subtasks, distributes them across available days, and tracks progress. Ollama runs locally by default; OpenRouter is an explicitly selected, optional hosted provider.
+StonePlan AI is a small, self-hosted, single-user AI task planner. It breaks a goal into editable, time-boxed subtasks, distributes them across available days, and tracks progress. Ollama runs locally by default; OpenRouter is an explicitly selected, optional hosted provider.
 
 ## Release 0.1: MVP
 
@@ -55,17 +55,19 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Use a URL-safe password because Compose includes it in the database connection URL. Open **http://localhost:8080** to create a task, generate and edit a plan, confirm its save, and check off steps. Task edits, accepted plans and completion changes persist after a page reload. **http://localhost:8080/api/health** returns `{"status":"ok"}`.
+Use a URL-safe password because Compose includes it in the database connection URL. Open **http://localhost:33050** to create a task, generate and edit a plan, confirm its save, and check off steps. Task edits, accepted plans and completion changes persist after a page reload. **http://localhost:33050/api/health** returns `{"status":"ok"}`.
 
 The command starts:
 
-- `web`: Angular built as static files and served by Nginx at `http://localhost:8080`; Nginx forwards `/api/*` to the `api` service.
+- `web`: Angular built as static files and served by Nginx at `http://localhost:33050`; Nginx forwards `/api/*` to the `api` service.
 - `api`: NestJS backend, accessible internally to the `web` container, with a database connection to `db:5432`.
 - `db`: PostgreSQL with a dedicated named volume for persisted database files.
 
 Compose waits for PostgreSQL readiness. Before listening, the API runs `prisma migrate deploy`; the website waits for the API health check. Only Nginx has a published port, bound to `127.0.0.1`. Change `WEB_PORT` in `.env` if needed.
 
 The containers use Compose's default network and one named `postgres_data` volume. `docker compose down` removes the containers while keeping database data. `docker compose down --volumes` deletes that data.
+
+The Compose project is `stone-plan-ai`; fresh installations use the `stoneplan` database/user and a `stone-plan-ai_postgres_data` volume. When upgrading an existing Task Flow AI installation, keep its current `POSTGRES_DB`, `POSTGRES_USER` and password in `.env`, and set `POSTGRES_VOLUME_NAME=task-flow-ai_postgres_data` to reuse its data. Stop and remove the previous application's `web`, `api` and `db` containers without removing volumes before starting the renamed stack. Leave separately running services intact. The repository's historical `TFA-*` story IDs remain unchanged.
 
 **Ollama runs separately from the demo**, configured with `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, and `OLLAMA_TIMEOUT_MS`. Compose does not install a model or start Ollama. Task CRUD starts even when Ollama is unavailable; only an explicit **Generate plan** request contacts the model. The browser calls NestJS through `/api`.
 
@@ -167,7 +169,7 @@ Open **http://localhost:4200**. Angular's development proxy forwards relative `/
 
 From `apps/api`: `npm run prisma:validate`, `npm run build`, and `npm test`. From `apps/web`: `npm run build` and `npm test`.
 
-For the running Docker demo, run `sh infra/smoke.sh` from the repository root. It checks the website and Nginx health proxy, task CRUD and validation, concurrent plan-save/budget protection, persisted completion, migration status, Prisma defaults and relational constraints, database restart persistence, and cascading deletion. It restarts only this project's database and removes its own temporary test tasks. If using another web port, set `TASK_FLOW_SMOKE_URL=http://localhost:YOUR_PORT`.
+For the running Docker demo, run `sh infra/smoke.sh` from the repository root. It checks the website and Nginx health proxy, task CRUD and validation, concurrent plan-save/budget protection, persisted completion, migration status, Prisma defaults and relational constraints, database restart persistence, and cascading deletion. It restarts only this project's database and removes its own temporary test tasks. If using another web port, set `STONE_PLAN_SMOKE_URL=http://localhost:YOUR_PORT`.
 
 After that smoke finishes, the live browser check is available from `apps/web`:
 

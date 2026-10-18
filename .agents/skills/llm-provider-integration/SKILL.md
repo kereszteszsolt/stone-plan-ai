@@ -1,6 +1,6 @@
 ---
 name: llm-provider-integration
-description: Use for Task Flow AI Ollama/OpenRouter adapters, provider selection, structured JSON/Zod outputs, timeouts, and privacy-safe AI-call diagnostics in planned Release 0.2.
+description: Use for StonePlan AI Ollama/OpenRouter adapters, provider selection, structured JSON/Zod outputs, timeouts, and privacy-safe AI-call diagnostics in planned Release 0.2.
 ---
 
 # LLM provider and observability

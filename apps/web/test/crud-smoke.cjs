@@ -8,7 +8,7 @@ const { tmpdir } = require('node:os');
 const { join } = require('node:path');
 const { chromium } = require('playwright-core');
 
-const baseUrl = process.env.TASK_FLOW_SMOKE_URL || 'http://localhost:8080';
+const baseUrl = process.env.STONE_PLAN_SMOKE_URL || process.env.TASK_FLOW_SMOKE_URL || 'http://localhost:33050';
 assert.ok(process.env.CHROME_EXECUTABLE, 'Set CHROME_EXECUTABLE to your local Chrome/headless-shell executable.');
 
 async function run() {
@@ -21,7 +21,7 @@ async function run() {
   const page = await context.newPage();
   page.setDefaultTimeout(10000);
   const ids = new Set();
-  const artifacts = mkdtempSync(join(tmpdir(), 'task-flow-ai-tfa002-'));
+  const artifacts = mkdtempSync(join(tmpdir(), 'stone-plan-ai-tfa002-'));
   const title = `TFA-002 browser ${randomUUID()}`;
   const pageErrors = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
@@ -39,6 +39,8 @@ async function run() {
 
   try {
     await page.goto(baseUrl);
+    assert.equal(await page.title(), 'StonePlan AI');
+    await page.getByRole('heading', { level: 1, name: 'StonePlan AI', exact: true }).waitFor();
     await page.getByRole('button', { name: 'New task', exact: true }).click();
     await page.getByLabel('Title', { exact: false }).fill(title);
     await page.getByLabel('Description', { exact: false }).fill('A real browser fixture');
