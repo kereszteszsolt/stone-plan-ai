@@ -45,6 +45,12 @@ Task requests, AI output and accepted plans use backend Zod validation. The back
 
 This is a **plain monorepo** (one Git repository with `apps/web` and `apps/api`), not an Nx/Turborepo-managed workspace. Each app has its own normal tooling. Docker Compose coordinates their containers; it does not replace or require a monorepo framework.
 
+## Branding and About
+
+[`brand/branding.json`](brand/branding.json) owns the displayed app/author names, links and artwork paths. Angular imports it at build time and packages the local artwork from `brand/assets/`. Rebuild the web app after changing it. The sidebar shows the current-year author copyright followed by a text license link, plus the author's website domain as a direct link. The header's **About** button opens a native dialog with a large poster, description and filled link buttons, followed by the copyright and inline license link. Buy me a Coffee and Ways to support sit together. Custom speech-bubble tooltips appear on hover or keyboard focus, explain each destination and show the full URL; the website/support tooltips also list hu | en | ro | de. Escape dismisses a visible tooltip before closing About. Support buttons offer voluntary ways to support the author.
+
+The task list has its own sidebar, separated from task details by a fading line; the header uses the same treatment. Both sections remain available on narrow screens. See the [branding guide](brand/README.md) for the metadata and asset contract.
+
 ## Local deployment
 
 Prerequisites: Docker with Compose. From the repository root:

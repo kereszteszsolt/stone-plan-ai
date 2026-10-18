@@ -1,0 +1,14 @@
+{
+  "appName": "StonePlan AI",
+  "appWebsite": "",
+  "appGithubUrl": "https://github.com/kereszteszsolt/stone-plan-ai",
+  "authorName": "Keresztes Zsolt",
+  "authorWebsite": "https://kereszteszsolt.hu",
+  "authorGithub": "https://github.com/kereszteszsolt",
+  "authorWaysToSupportUrl": "https://kereszteszsolt.hu/ways-to-support",
+  "authorBuyMeACoffeeUrl": "https://buymeacoffee.com/kereszteszsolt",
+  "license": "Apache-2.0",
+  "appFavicon": "assets/stoneplan-ai-favicon.svg",
+  "appIcon": "assets/stoneplan-ai-favicon.svg",
+  "appPoster": "assets/stoneplan-ai-poster.svg"
+}

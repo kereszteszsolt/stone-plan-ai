@@ -18,6 +18,13 @@
             "browser": "src/main.ts",
             "index": "src/index.html",
             "tsConfig": "tsconfig.app.json",
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": ".brand/assets",
+                "output": "assets/brand"
+              }
+            ],
             "styles": [
               "src/styles.css"
             ]

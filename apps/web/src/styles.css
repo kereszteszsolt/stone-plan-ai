@@ -4,16 +4,19 @@
 :root {
   color-scheme: light dark;
   font-family: system-ui, sans-serif;
-  --text: #202737;
-  --muted: #596579;
+  --text: #29263d;
+  --muted: #6a647e;
   --panel: #fff;
-  --surface: #f1f4fa;
-  --border: #d5dce7;
-  --accent: #4052c9;
+  --page: #faf9fe;
+  --sidebar: #f5f3fc;
+  --surface: #eeebf9;
+  --border: #dcd7ed;
+  --accent: #5542b7;
+  --link: #5542b7;
   --danger: #b52f3e;
   --success: #236743;
-  --focus: #8492ed;
-  background: #f6f8fc;
+  --focus: #9c8ce0;
+  background: var(--page);
   color: var(--text);
 }
 
@@ -23,17 +26,55 @@ body {
   margin: 0;
 }
 
+.link-tooltip {
+  position: fixed;
+  z-index: 10;
+  width: max-content;
+  max-width: 19rem;
+  padding: .75rem .9rem;
+  border: 1px solid var(--border);
+  border-radius: .75rem;
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: 0 8px 28px #17102430;
+  font-size: .75rem;
+  font-weight: 400;
+  line-height: 1.6;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.link-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: var(--tooltip-arrow);
+  width: .65rem;
+  height: .65rem;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.link-tooltip.below::after {
+  top: 0;
+  transform: translate(-50%, -50%) rotate(225deg);
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
-    --text: #edf1fa;
-    --muted: #adb8ca;
-    --panel: #1b2230;
-    --surface: #252f42;
-    --border: #3a465b;
-    --accent: #5266dc;
+    --text: #f0ecfa;
+    --muted: #b7aecb;
+    --panel: #211d32;
+    --page: #171424;
+    --sidebar: #1c182a;
+    --surface: #2b2440;
+    --border: #403551;
+    --accent: #785bd0;
+    --link: #bba8ff;
     --danger: #f47d8b;
     --success: #8bd5ac;
-    --focus: #a1afff;
-    background: #121824;
+    --focus: #bba8ff;
   }
 }

@@ -7,9 +7,14 @@
     "node": ">=24.15.0 <25"
   },
   "scripts": {
+    "brand:prepare": "node scripts/prepare-brand.cjs",
+    "prestart": "npm run brand:prepare",
     "start": "ng serve --proxy-config proxy.conf.json",
+    "prebuild": "npm run brand:prepare",
     "build": "ng build",
+    "prewatch": "npm run brand:prepare",
     "watch": "ng build --watch --configuration development",
+    "pretest": "npm run brand:prepare",
     "test": "ng test --watch=false",
     "test:smoke": "node test/crud-smoke.cjs",
     "test:preview-smoke": "node test/preview-smoke.cjs",

@@ -7,6 +7,7 @@ const { mkdtempSync } = require('node:fs');
 const { tmpdir } = require('node:os');
 const { join } = require('node:path');
 const { chromium } = require('playwright-core');
+const brand = require('../../../brand/branding.json');
 
 const baseUrl = process.env.STONE_PLAN_SMOKE_URL || process.env.TASK_FLOW_SMOKE_URL || 'http://localhost:33050';
 assert.ok(process.env.CHROME_EXECUTABLE, 'Set CHROME_EXECUTABLE to your local Chrome/headless-shell executable.');
@@ -39,10 +40,48 @@ async function run() {
 
   try {
     await page.goto(baseUrl);
-    assert.equal(await page.title(), 'StonePlan AI');
-    await page.getByRole('heading', { level: 1, name: 'StonePlan AI', exact: true }).waitFor();
+    await page.getByRole('heading', { level: 1, name: brand.appName, exact: true }).waitFor();
+    assert.equal(await page.title(), brand.appName);
+    const favicon = await page.locator('link[rel="icon"]').getAttribute('href');
+    assert.equal(favicon, `assets/brand/${brand.appFavicon.slice('assets/'.length)}`);
+    assert.equal((await context.request.get(`${baseUrl}/${favicon}`)).status(), 200);
+    assert.ok((await page.locator('.sidebar-footer').textContent()).includes(`© ${new Date().getFullYear()} ${brand.authorName}`));
+    assert.equal(await page.locator('.author-website').textContent(), new URL(brand.authorWebsite).hostname);
+    assert.equal(await page.locator('.author-website').getAttribute('href'), brand.authorWebsite);
+    const sidebarBox = await page.locator('.sidebar').boundingBox();
+    const detailBox = await page.locator('.task-detail').boundingBox();
+    const footerBox = await page.locator('.sidebar-footer').boundingBox();
+    assert.ok(sidebarBox.x + sidebarBox.width <= detailBox.x);
+    assert.ok(footerBox.y + footerBox.height <= 901);
+    const aboutButton = page.getByRole('button', { name: 'About', exact: true });
+    const about = page.getByRole('dialog');
+    await aboutButton.click();
+    await about.waitFor();
+    assert.equal(await about.getByRole('button', { name: 'Close about', exact: true }).evaluate((button) => button === document.activeElement), true);
+    await page.keyboard.press('Shift+Tab');
+    assert.equal(await about.evaluate((dialog) => dialog.contains(document.activeElement)), true);
+    assert.equal(await about.getByRole('heading', { level: 2 }).textContent(), `About ${brand.appName}`);
+    assert.equal(await about.getByRole('link', { name: 'Ways to support' }).getAttribute('href'), brand.authorWaysToSupportUrl);
+    assert.equal(await about.getByRole('link', { name: new URL(brand.authorWebsite).hostname, exact: true }).getAttribute('href'), brand.authorWebsite);
+    assert.equal(await about.locator('.about-copyright .license-link').textContent(), brand.license);
+    await about.getByRole('link', { name: 'Ways to support', exact: true }).focus();
+    assert.ok((await about.getByRole('tooltip').textContent()).includes('support the author'));
+    await page.keyboard.press('Escape');
+    await about.getByRole('tooltip').waitFor({ state: 'hidden' });
+    await about.getByRole('link', { name: 'Buy me a Coffee', exact: true }).focus();
+    assert.ok((await about.getByRole('tooltip').textContent()).endsWith(brand.authorBuyMeACoffeeUrl));
+    await page.keyboard.press('Escape');
+    await page.screenshot({ path: join(artifacts, 'about-desktop.png') });
+    await page.keyboard.press('Escape');
+    await about.waitFor({ state: 'hidden' });
+    assert.equal(await aboutButton.evaluate((button) => button === document.activeElement), true);
     await page.getByRole('button', { name: 'New task', exact: true }).click();
     await page.getByLabel('Title', { exact: false }).fill(title);
+    await aboutButton.click();
+    await about.waitFor();
+    await about.getByRole('button', { name: 'Close about', exact: true }).click();
+    await about.waitFor({ state: 'hidden' });
+    assert.equal(await page.getByLabel('Title', { exact: false }).inputValue(), title);
     await page.getByLabel('Description', { exact: false }).fill('A real browser fixture');
     await page.getByLabel('Days', { exact: true }).fill('4');
     await page.getByLabel('Minutes per day', { exact: true }).fill('45');
@@ -77,6 +116,13 @@ async function run() {
       assert.equal(await page.locator('fieldset input, fieldset textarea').count(), 4);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
       await page.screenshot({ path: join(artifacts, `form-${width}-${colorScheme}.png`), fullPage: true });
+      await aboutButton.click();
+      await about.waitFor();
+      assert.ok(await about.evaluate((dialog) => dialog.scrollWidth <= dialog.clientWidth));
+      await about.getByRole('link', { name: 'Ways to support' }).scrollIntoViewIfNeeded();
+      await page.screenshot({ path: join(artifacts, `about-${width}-${colorScheme}.png`), fullPage: true });
+      await page.keyboard.press('Escape');
+      await about.waitFor({ state: 'hidden' });
       await page.getByRole('button', { name: 'Cancel', exact: true }).click();
     }
 
@@ -117,7 +163,7 @@ async function run() {
     await page.getByRole('button', { name: 'Try again', exact: true }).click();
     await page.getByRole('alert').waitFor({ state: 'hidden' });
     assert.deepEqual(pageErrors, []);
-    console.log('Browser CRUD/reload, failed-save recovery, deletion confirmation, list retry and responsive themes: passed');
+    console.log('Brand/favicon, native About/focus/draft retention, browser CRUD/reload, failed-save recovery, deletion confirmation, list retry and responsive themes: passed');
     console.log(`Local screenshots: ${artifacts}`);
   } finally {
     for (const id of ids) await context.request.delete(`${baseUrl}/api/tasks/${id}`);

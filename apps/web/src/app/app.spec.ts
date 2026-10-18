@@ -4,8 +4,9 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './app';
+import { BRAND } from './brand';
 import type { TaskDetail } from './tasks-api.service';
 
 const task: TaskDetail = {
@@ -47,6 +48,92 @@ describe('Task screen', () => {
     await pending;
     await fixture.whenStable();
   }
+
+  it('uses the shared brand for its title, favicon and current-year sidebar attribution', async () => {
+    await list();
+    expect(document.title).toBe(BRAND.appName);
+    expect(fixture.nativeElement.querySelector('h1').textContent).toBe(BRAND.appName);
+    expect(document.querySelector('link[rel="icon"]')?.getAttribute('href')).toBe(BRAND.faviconUrl);
+    const footer = fixture.nativeElement.querySelector('.sidebar-footer');
+    expect(footer.textContent).toContain(`© ${new Date().getFullYear()} ${BRAND.authorName}`);
+    expect(footer.querySelector('.license-link').textContent).toBe(BRAND.license);
+    expect(footer.querySelector('.author-website').textContent).toBe(BRAND.authorWebsiteLabel);
+    expect(footer.querySelector('.author-website').getAttribute('href')).toBe(BRAND.authorWebsite);
+  });
+
+  it('offers configured project/author links and clearly labels voluntary author support', async () => {
+    await list();
+    const dialog = fixture.nativeElement.querySelector('dialog');
+    expect(dialog.getAttribute('aria-labelledby')).toBe('about-heading');
+    expect(dialog.querySelector('#about-heading').textContent).toBe(`About ${BRAND.appName}`);
+    const links = [...dialog.querySelectorAll('.about-action')] as HTMLAnchorElement[];
+    expect(links.find((link) => link.textContent?.includes('Ways to support'))?.getAttribute('href')).toBe(BRAND.authorWaysToSupportUrl);
+    const website = links.find((link) => link.textContent?.includes(BRAND.authorWebsiteLabel));
+    expect(website?.getAttribute('href')).toBe(BRAND.authorWebsite);
+    expect(links.find((link) => link.textContent?.includes('Source'))?.getAttribute('href')).toBe(BRAND.appGithubUrl);
+    expect(links.find((link) => link.textContent?.includes('GitHub profile'))?.getAttribute('href')).toBe(BRAND.authorGithub);
+    expect(links.every((link) => link.getAttribute('href') && link.rel.includes('noopener'))).toBe(true);
+    expect(links.every((link) => !link.hasAttribute('title'))).toBe(true);
+    expect(dialog.querySelector('.coffee-action').textContent).toContain('Buy me a Coffee');
+    const supportGroup = dialog.querySelector('.about-support-actions');
+    expect(supportGroup.textContent).toContain('Buy me a Coffee');
+    expect(supportGroup.textContent).toContain('Ways to support');
+    const copyright = dialog.querySelector('.about-copyright');
+    expect(copyright.textContent).toContain(`${BRAND.authorName}, ${BRAND.license}`);
+    expect(copyright.querySelector('a').getAttribute('href')).toBe(app.licenseUrl);
+    expect(copyright.querySelector('.about-action')).toBeNull();
+    if (!BRAND.appWebsite) expect(links.some((link) => link.textContent?.includes('Project website'))).toBe(false);
+  });
+
+  it('shows a described speech-bubble tooltip with the destination on focus, and dismisses it with Escape', async () => {
+    await list();
+    const link = fixture.nativeElement.querySelector('.about-action') as HTMLAnchorElement;
+    link.dispatchEvent(new Event('focus'));
+    const tooltip = fixture.nativeElement.querySelector('[role="tooltip"]') as HTMLElement;
+    expect(link.getAttribute('aria-describedby')).toBe(tooltip.id);
+    expect(tooltip.textContent).toContain("Author's website. Available in hu | en | ro | de.");
+    expect(tooltip.textContent).toContain(BRAND.authorWebsite);
+    const escape = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    link.dispatchEvent(escape);
+    expect(escape.defaultPrevented).toBe(true);
+    expect(fixture.nativeElement.querySelector('[role="tooltip"]')).toBeNull();
+    expect(link.hasAttribute('aria-describedby')).toBe(false);
+    http.expectNone((request) => request.method !== 'GET');
+  });
+
+  it('replaces a hovered tooltip on another link focus and removes it when About closes', async () => {
+    await list();
+    const dialog = fixture.nativeElement.querySelector('dialog') as HTMLDialogElement;
+    const website = dialog.querySelector('.about-action') as HTMLAnchorElement;
+    const support = dialog.querySelector('.about-support-actions a:last-child') as HTMLAnchorElement;
+    website.dispatchEvent(new Event('mouseenter'));
+    expect(dialog.querySelector('[role="tooltip"]')?.textContent).toContain(BRAND.authorWebsite);
+    support.dispatchEvent(new Event('focus'));
+    expect(dialog.querySelectorAll('[role="tooltip"]')).toHaveLength(1);
+    expect(dialog.querySelector('[role="tooltip"]')?.textContent).toContain(BRAND.authorWaysToSupportUrl);
+    expect(website.hasAttribute('aria-describedby')).toBe(false);
+    dialog.dispatchEvent(new Event('close'));
+    expect(dialog.querySelector('[role="tooltip"]')).toBeNull();
+    expect(support.hasAttribute('aria-describedby')).toBe(false);
+  });
+
+  it('opens and closes native About from the navbar without changing an editable task draft', async () => {
+    await list();
+    app.startCreate();
+    app.form.controls.title.setValue('Keep this unfinished draft');
+    fixture.detectChanges();
+    const dialog = fixture.nativeElement.querySelector('dialog');
+    const showModal = vi.fn();
+    const close = vi.fn();
+    Object.defineProperties(dialog, { showModal: { value: showModal }, close: { value: close } });
+    fixture.nativeElement.querySelector('.nav-about').click();
+    expect(showModal).toHaveBeenCalledOnce();
+    fixture.nativeElement.querySelector('.close-about').click();
+    expect(close).toHaveBeenCalledOnce();
+    expect(app.mode()).toBe('create');
+    expect(app.form.controls.title.value).toBe('Keep this unfinished draft');
+    http.expectNone((request) => request.method !== 'GET');
+  });
 
   it('shows loading and then an empty state', async () => {
     expect(fixture.nativeElement.textContent).toContain('Loading tasks…');

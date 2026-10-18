@@ -1,12 +1,15 @@
 // SPDX-FileCopyrightText: 2026 Keresztes Zsolt <https://kereszteszsolt.hu>
 // SPDX-License-Identifier: Apache-2.0
 
-import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, signal, type OnInit } from '@angular/core';
+import { DatePipe, DOCUMENT, NgTemplateOutlet } from '@angular/common';
+import { ChangeDetectionStrategy, Component, computed, inject, signal, viewChild, type ElementRef, type OnInit } from '@angular/core';
+import { Title } from '@angular/platform-browser';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators, type AbstractControl, type ValidationErrors } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { TasksApiService, type Subtask, type Task, type TaskDetail } from './tasks-api.service';
 import { PlanPreviewComponent } from './plan-preview/plan-preview';
+import { BRAND } from './brand';
+import { Tooltip } from './tooltip';
 
 function integer(control: AbstractControl): ValidationErrors | null {
   return Number.isInteger(control.value) ? null : { integer: true };
@@ -15,7 +18,7 @@ function integer(control: AbstractControl): ValidationErrors | null {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [DatePipe, ReactiveFormsModule, PlanPreviewComponent],
+  imports: [DatePipe, NgTemplateOutlet, ReactiveFormsModule, PlanPreviewComponent, Tooltip],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './app.html',
   styleUrl: './app.css',
@@ -23,8 +26,23 @@ function integer(control: AbstractControl): ValidationErrors | null {
 export class App implements OnInit {
   private readonly api = inject(TasksApiService);
   private readonly formBuilder = inject(NonNullableFormBuilder);
+  private readonly document = inject(DOCUMENT);
+  private readonly title = inject(Title);
+  private readonly aboutDialog = viewChild.required<ElementRef<HTMLDialogElement>>('aboutDialog');
   private selectionVersion = 0;
 
+  readonly brand = BRAND;
+  readonly licenseUrl = 'https://www.apache.org/licenses/LICENSE-2.0';
+  readonly aboutLinks = [
+    { id: 'website', icon: 'globe', label: this.brand.authorWebsiteLabel, href: this.brand.authorWebsite, description: "Author's website. Available in hu | en | ro | de." },
+    { id: 'source', icon: 'code', label: 'Source', href: this.brand.appGithubUrl, description: `View the ${this.brand.appName} source code on GitHub.` },
+    { id: 'profile', icon: 'profile', label: 'GitHub profile', href: this.brand.authorGithub, description: "The author's GitHub profile." },
+    { id: 'project', icon: 'globe', label: 'Project website', href: this.brand.appWebsite, description: `Visit the ${this.brand.appName} website.` },
+    { id: 'coffee', icon: 'coffee', label: 'Buy me a Coffee', href: this.brand.authorBuyMeACoffeeUrl, description: 'Support the author with a coffee on Buy Me a Coffee.' },
+    { id: 'support', icon: 'heart', label: 'Ways to support', href: this.brand.authorWaysToSupportUrl, description: 'Ways to support the author. Available in hu | en | ro | de.' },
+  ].filter((link) => !!link.href);
+  readonly projectLinks = this.aboutLinks.filter((link) => link.id !== 'coffee' && link.id !== 'support');
+  readonly supportLinks = this.aboutLinks.filter((link) => link.id === 'coffee' || link.id === 'support');
   readonly tasks = signal<Task[]>([]);
   readonly selectedId = signal<string | null>(null);
   readonly selectedTask = signal<TaskDetail | null>(null);
@@ -58,8 +76,28 @@ export class App implements OnInit {
     minutesPerDay: [30, [Validators.required, Validators.min(15), Validators.max(240), integer]],
   });
 
+  get currentYear(): number {
+    return new Date().getFullYear();
+  }
+
   ngOnInit(): void {
+    this.title.setTitle(this.brand.appName);
+    if (this.brand.faviconUrl) {
+      const favicon = this.document.querySelector<HTMLLinkElement>('link[rel="icon"]') ?? this.document.createElement('link');
+      favicon.rel = 'icon';
+      favicon.type = 'image/svg+xml';
+      favicon.href = this.brand.faviconUrl;
+      this.document.head.append(favicon);
+    }
     void this.loadTasks();
+  }
+
+  openAbout(): void {
+    this.aboutDialog().nativeElement.showModal();
+  }
+
+  closeAbout(): void {
+    this.aboutDialog().nativeElement.close();
   }
 
   async loadTasks(): Promise<void> {
