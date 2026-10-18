@@ -27,7 +27,7 @@ Angular imports the prepared JSON at build time through `apps/web/src/app/brand.
 
 The sidebar and About website labels are derived from `authorWebsite`'s hostname. About shows the large poster above the description and compact filled buttons with small icons. The two voluntary support buttons share a row. Speech-bubble tooltips explain each link and show its complete configured URL on hover or keyboard focus; the author's website and ways-to-support page also list availability in hu | en | ro | de. Tooltips stay within the viewport/dialog edges, allow hovering their content, and dismiss with Escape. The copyright identifies the author and ends with an inline license link, rather than a license button.
 
-The previously copied Buy Me a Coffee image remains unchanged at `assets/buy-me-a-coffee-orange.png`, originally from `../cite-nook-ai/docs/assets/`. The compact About collection now uses a matching filled coffee button with a cup icon; its destination still comes from `authorBuyMeACoffeeUrl`.
+The About collection uses a filled coffee button with an inline cup icon; its destination comes from `authorBuyMeACoffeeUrl`. The former standalone coffee-button PNG was removed because the app no longer uses it. The PNG poster remains as the documented social-preview alternative, while the app uses the configured SVG poster.
 
 Angular packages `brand/assets/` under `assets/brand/`; the source paths above are mapped to that public base. The web Docker build includes this directory, so a branding change needs a new web build/deployment. There is no runtime request for the JSON or external artwork.
 
