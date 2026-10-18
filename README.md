@@ -1,4 +1,4 @@
-# Task Flow AI
+# StonePlan AI
 
 > **Break goals into practical steps.**
 
