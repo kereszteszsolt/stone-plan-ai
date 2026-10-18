@@ -6,7 +6,7 @@
 
 **Status: Releases 0.1–0.3 implemented with local verification.** The MVP provides persistent task management, editable AI-generated plans, explicit approval, and progress tracking. Release 0.2 adds optional OpenRouter integration, basic LLM call diagnostics, and 1–30-day planning (TFA-005–007). Release 0.3 adds opt-in, metadata-only Langfuse tracing (TFA-008). See the [0.2](docs/releases/release-0.2-ai-provider-observability/verification.md) and [0.3 verification](docs/releases/release-0.3-langfuse-observability/verification.md) for evidence and limits; live OpenRouter generation and a hosted/cloud Langfuse dashboard trace are not claimed; self-hosted Langfuse was checked locally in Docker and the browser.
 
-Task Flow AI is a small, self-hosted, single-user AI task planner. It breaks a goal into editable, time-boxed subtasks, distributes them across available days, and tracks progress. Ollama runs locally by default; OpenRouter is an explicitly selected, optional hosted provider.
+StonePlan AI is a small, self-hosted, single-user AI task planner. It breaks a goal into editable, time-boxed subtasks, distributes them across available days, and tracks progress. Ollama runs locally by default; OpenRouter is an explicitly selected, optional hosted provider.
 
 ## Release 0.1: MVP
 
