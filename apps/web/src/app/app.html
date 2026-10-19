@@ -4,7 +4,7 @@
       @if (brand.iconUrl) { <img class="brand-mark" [src]="brand.iconUrl" alt="" width="48" height="48"> }
       <div>
         <h1>{{ brand.appName }}</h1>
-        <p class="muted">Break goals into practical steps.</p>
+        <p class="muted">{{ brand.appTagline }}</p>
       </div>
     </div>
     <nav class="main-nav" aria-label="Main">
@@ -50,8 +50,8 @@
 
       <footer class="sidebar-footer">
         <div class="attribution">
-          <span>© {{ currentYear }} {{ brand.authorName }}, <a class="license-link" [href]="licenseUrl" [appTooltip]="'Read the ' + brand.license + ' license.\n' + licenseUrl" target="_blank" rel="noopener noreferrer">{{ brand.license }}</a></span>
-          @if (brand.authorWebsite) { <a class="author-website" [href]="brand.authorWebsite" [appTooltip]="'Author’s website. Available in hu | en | ro | de.\n' + brand.authorWebsite" target="_blank" rel="noopener noreferrer">{{ brand.authorWebsiteLabel }}</a> }
+          <span>© {{ currentYear }} {{ brand.authorName }}, <a class="license-link" [href]="licenseUrl" [appTooltip]="'Read the Apache-2.0 license.\n' + licenseUrl" target="_blank" rel="noopener noreferrer">Apache-2.0</a></span>
+          @if (brand.authorWebsite) { <a class="author-website" [href]="brand.authorWebsite" [appTooltip]="'Author’s website.' + authorWebsiteAvailability + '\n' + brand.authorWebsite" target="_blank" rel="noopener noreferrer">{{ brand.authorWebsiteLabel }}</a> }
         </div>
       </footer>
     </aside>
@@ -171,7 +171,7 @@
   </div>
 </div>
 
-<dialog #aboutDialog id="about-dialog" class="about-dialog" aria-labelledby="about-heading">
+<dialog #aboutDialog id="about-dialog" class="about-dialog" aria-labelledby="about-heading" (click)="closeAboutOnBackdrop($event)">
   <div class="about-header">
     <h2 id="about-heading">About {{ brand.appName }}</h2>
     <button type="button" class="close-about" (click)="closeAbout()" aria-label="Close about" autofocus><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
@@ -179,7 +179,7 @@
   <div class="about-content">
     <div class="about-overview">
       @if (brand.posterUrl) { <img class="about-poster" [src]="brand.posterUrl" [alt]="brand.appName + ' project poster'" loading="lazy" width="780" height="480"> }
-      <p class="about-intro">Turn a goal into an editable daily plan and track your progress.</p>
+      <p class="about-intro">{{ brand.appDescription }}</p>
     </div>
     <nav class="about-actions" aria-label="Project and author links">
       @for (link of projectLinks; track link.id) {
@@ -210,8 +210,8 @@
     </nav>
     <div class="support-note" role="note">
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 7v6m0 4h.01"/></svg>
-      <p>Support is voluntary and does not create any obligation, priority service, special access or other consideration. Thank you for your attention, and also if you support my work in any way!</p>
+      <p>{{ brand.supportRemarkText }}</p>
     </div>
-    <p class="about-copyright muted">© {{ currentYear }} {{ brand.authorName }}, <a class="license-link" [href]="licenseUrl" [appTooltip]="'Read the ' + brand.license + ' license.\n' + licenseUrl" target="_blank" rel="noopener noreferrer">{{ brand.license }}</a></p>
+    <p class="about-copyright muted">© {{ currentYear }} {{ brand.authorName }}, <a class="license-link" [href]="licenseUrl" [appTooltip]="'Read the Apache-2.0 license.\n' + licenseUrl" target="_blank" rel="noopener noreferrer">Apache-2.0</a></p>
   </div>
 </dialog>

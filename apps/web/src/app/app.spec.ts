@@ -56,7 +56,7 @@ describe('Task screen', () => {
     expect(document.querySelector('link[rel="icon"]')?.getAttribute('href')).toBe(BRAND.faviconUrl);
     const footer = fixture.nativeElement.querySelector('.sidebar-footer');
     expect(footer.textContent).toContain(`© ${new Date().getFullYear()} ${BRAND.authorName}`);
-    expect(footer.querySelector('.license-link').textContent).toBe(BRAND.license);
+    expect(footer.querySelector('.license-link').textContent).toBe('Apache-2.0');
     expect(footer.querySelector('.author-website').textContent).toBe(BRAND.authorWebsiteLabel);
     expect(footer.querySelector('.author-website').getAttribute('href')).toBe(BRAND.authorWebsite);
   });
@@ -79,7 +79,7 @@ describe('Task screen', () => {
     expect(supportGroup.textContent).toContain('Buy me a Coffee');
     expect(supportGroup.textContent).toContain('Ways to support');
     const copyright = dialog.querySelector('.about-copyright');
-    expect(copyright.textContent).toContain(`${BRAND.authorName}, ${BRAND.license}`);
+    expect(copyright.textContent).toContain(`${BRAND.authorName}, Apache-2.0`);
     expect(copyright.querySelector('a').getAttribute('href')).toBe(app.licenseUrl);
     expect(copyright.querySelector('.about-action')).toBeNull();
     if (!BRAND.appWebsite) expect(links.some((link) => link.textContent?.includes('Project website'))).toBe(false);

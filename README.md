@@ -1,6 +1,6 @@
 # StonePlan AI
 
-> **Break goals into practical steps.**
+> **Break tasks into practical steps.**
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-D22128?style=flat-square&labelColor=2B3137&logo=apache&logoColor=white)](LICENSE)
 
@@ -49,6 +49,8 @@ This is a **plain monorepo** (one Git repository with `apps/web` and `apps/api`)
 
 [`brand/branding.json`](brand/branding.json) owns the displayed app/author names, links and artwork paths. Angular imports it at build time and packages the local artwork from `brand/assets/`. Rebuild the web app after changing it. The sidebar shows the current-year author copyright followed by a text license link, plus the author's website domain as a direct link. The header's **About** button opens a native dialog with a large poster, description and filled link buttons, followed by the copyright and inline license link. Buy me a Coffee and Ways to support sit together. Custom speech-bubble tooltips appear on hover or keyboard focus, explain each destination and show the full URL; the website/support tooltips also list hu | en | ro | de. Escape dismisses a visible tooltip before closing About. Support buttons offer voluntary ways to support the author.
 
+Close About with its close button, Escape, or a click on the backdrop outside the dialog. Clicking inside the dialog keeps it open.
+
 The task list has its own sidebar, separated from task details by a fading line; the header uses the same treatment. Both sections remain available on narrow screens. See the [branding guide](brand/README.md) for the metadata and asset contract.
 
 ## Local deployment
@@ -70,6 +72,8 @@ The command starts:
 - `db`: PostgreSQL with a dedicated named volume for persisted database files.
 
 Compose waits for PostgreSQL readiness. Before listening, the API runs `prisma migrate deploy`; the website waits for the API health check. Only Nginx has a published port, bound to `127.0.0.1`. Change `WEB_PORT` in `.env` if needed.
+
+All three services explicitly use `restart: "no"`: Docker does not automatically restart them after a container exits or the Docker daemon restarts. Start them manually with `docker compose up -d`.
 
 The containers use Compose's default network and one named `postgres_data` volume. `docker compose down` removes the containers while keeping database data. `docker compose down --volumes` deletes that data.
 

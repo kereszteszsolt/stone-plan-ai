@@ -33,13 +33,16 @@ export class App implements OnInit {
 
   readonly brand = BRAND;
   readonly licenseUrl = 'https://www.apache.org/licenses/LICENSE-2.0';
+  readonly authorWebsiteAvailability = this.brand.authorWebsiteLanguages.length
+    ? ` Available in ${this.brand.authorWebsiteLanguages.join(' | ')}.`
+    : '';
   readonly aboutLinks = [
-    { id: 'website', icon: 'globe', label: this.brand.authorWebsiteLabel, href: this.brand.authorWebsite, description: "Author's website. Available in hu | en | ro | de." },
+    { id: 'website', icon: 'globe', label: this.brand.authorWebsiteLabel, href: this.brand.authorWebsite, description: `Author's website.${this.authorWebsiteAvailability}` },
     { id: 'source', icon: 'code', label: 'Source', href: this.brand.appGithubUrl, description: `View the ${this.brand.appName} source code on GitHub.` },
     { id: 'profile', icon: 'profile', label: 'GitHub profile', href: this.brand.authorGithub, description: "The author's GitHub profile." },
     { id: 'project', icon: 'globe', label: 'Project website', href: this.brand.appWebsite, description: `Visit the ${this.brand.appName} website.` },
     { id: 'coffee', icon: 'coffee', label: 'Buy me a Coffee', href: this.brand.authorBuyMeACoffeeUrl, description: 'Support the author with a coffee on Buy Me a Coffee.' },
-    { id: 'support', icon: 'heart', label: 'Ways to support', href: this.brand.authorWaysToSupportUrl, description: 'Ways to support the author. Available in hu | en | ro | de.' },
+    { id: 'support', icon: 'heart', label: 'Ways to support', href: this.brand.authorWaysToSupportUrl, description: `Ways to support the author.${this.authorWebsiteAvailability}` },
   ].filter((link) => !!link.href);
   readonly projectLinks = this.aboutLinks.filter((link) => link.id !== 'coffee' && link.id !== 'support');
   readonly supportLinks = this.aboutLinks.filter((link) => link.id === 'coffee' || link.id === 'support');
@@ -98,6 +101,16 @@ export class App implements OnInit {
 
   closeAbout(): void {
     this.aboutDialog().nativeElement.close();
+  }
+
+  closeAboutOnBackdrop(event: MouseEvent): void {
+    const dialog = this.aboutDialog().nativeElement;
+    if (event.target !== dialog) return;
+    const bounds = dialog.getBoundingClientRect();
+    if (event.clientX < bounds.left || event.clientX > bounds.right ||
+        event.clientY < bounds.top || event.clientY > bounds.bottom) {
+      dialog.close();
+    }
   }
 
   async loadTasks(): Promise<void> {

@@ -63,7 +63,7 @@ async function run() {
     assert.equal(await about.getByRole('heading', { level: 2 }).textContent(), `About ${brand.appName}`);
     assert.equal(await about.getByRole('link', { name: 'Ways to support' }).getAttribute('href'), brand.authorWaysToSupportUrl);
     assert.equal(await about.getByRole('link', { name: new URL(brand.authorWebsite).hostname, exact: true }).getAttribute('href'), brand.authorWebsite);
-    assert.equal(await about.locator('.about-copyright .license-link').textContent(), brand.license);
+    assert.equal(await about.locator('.about-copyright .license-link').textContent(), 'Apache-2.0');
     await about.getByRole('link', { name: 'Ways to support', exact: true }).focus();
     assert.ok((await about.getByRole('tooltip').textContent()).includes('support the author'));
     await page.keyboard.press('Escape');
