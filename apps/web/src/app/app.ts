@@ -8,7 +8,7 @@ import { NonNullableFormBuilder, ReactiveFormsModule, Validators, type AbstractC
 import { firstValueFrom } from 'rxjs';
 import { TasksApiService, type Subtask, type Task, type TaskDetail } from './tasks-api.service';
 import { PlanPreviewComponent } from './plan-preview/plan-preview';
-import { BRAND } from './brand';
+import { APP_INFO } from './app-info';
 import { Tooltip } from './tooltip';
 
 function integer(control: AbstractControl): ValidationErrors | null {
@@ -31,18 +31,18 @@ export class App implements OnInit {
   private readonly aboutDialog = viewChild.required<ElementRef<HTMLDialogElement>>('aboutDialog');
   private selectionVersion = 0;
 
-  readonly brand = BRAND;
+  readonly appInfo = APP_INFO;
   readonly licenseUrl = 'https://www.apache.org/licenses/LICENSE-2.0';
-  readonly authorWebsiteAvailability = this.brand.authorWebsiteLanguages.length
-    ? ` Available in ${this.brand.authorWebsiteLanguages.join(' | ')}.`
+  readonly authorWebsiteAvailability = this.appInfo.authorWebsiteLanguages.length
+    ? ` Available in ${this.appInfo.authorWebsiteLanguages.join(' | ')}.`
     : '';
   readonly aboutLinks = [
-    { id: 'website', icon: 'globe', label: this.brand.authorWebsiteLabel, href: this.brand.authorWebsite, description: `Author's website.${this.authorWebsiteAvailability}` },
-    { id: 'source', icon: 'code', label: 'Source', href: this.brand.appGithubUrl, description: `View the ${this.brand.appName} source code on GitHub.` },
-    { id: 'profile', icon: 'profile', label: 'GitHub profile', href: this.brand.authorGithub, description: "The author's GitHub profile." },
-    { id: 'project', icon: 'globe', label: 'Project website', href: this.brand.appWebsite, description: `Visit the ${this.brand.appName} website.` },
-    { id: 'coffee', icon: 'coffee', label: 'Buy me a Coffee', href: this.brand.authorBuyMeACoffeeUrl, description: 'Support the author with a coffee on Buy Me a Coffee.' },
-    { id: 'support', icon: 'heart', label: 'Ways to support', href: this.brand.authorWaysToSupportUrl, description: `Ways to support the author.${this.authorWebsiteAvailability}` },
+    { id: 'website', icon: 'globe', label: this.appInfo.authorWebsiteLabel, href: this.appInfo.authorWebsite, description: `Author's website.${this.authorWebsiteAvailability}` },
+    { id: 'source', icon: 'code', label: 'Source', href: this.appInfo.appGithubUrl, description: `View the ${this.appInfo.appName} source code on GitHub.` },
+    { id: 'profile', icon: 'profile', label: 'GitHub profile', href: this.appInfo.authorGithub, description: "The author's GitHub profile." },
+    { id: 'project', icon: 'globe', label: 'Project website', href: this.appInfo.appWebsite, description: `Visit the ${this.appInfo.appName} website.` },
+    { id: 'coffee', icon: 'coffee', label: 'Buy me a Coffee', href: this.appInfo.authorBuyMeACoffeeUrl, description: 'Support the author with a coffee on Buy Me a Coffee.' },
+    { id: 'support', icon: 'heart', label: 'Ways to support', href: this.appInfo.authorWaysToSupportUrl, description: `Ways to support the author.${this.authorWebsiteAvailability}` },
   ].filter((link) => !!link.href);
   readonly projectLinks = this.aboutLinks.filter((link) => link.id !== 'coffee' && link.id !== 'support');
   readonly supportLinks = this.aboutLinks.filter((link) => link.id === 'coffee' || link.id === 'support');
@@ -84,12 +84,12 @@ export class App implements OnInit {
   }
 
   ngOnInit(): void {
-    this.title.setTitle(this.brand.appName);
-    if (this.brand.faviconUrl) {
+    this.title.setTitle(this.appInfo.appName);
+    if (this.appInfo.faviconUrl) {
       const favicon = this.document.querySelector<HTMLLinkElement>('link[rel="icon"]') ?? this.document.createElement('link');
       favicon.rel = 'icon';
       favicon.type = 'image/svg+xml';
-      favicon.href = this.brand.faviconUrl;
+      favicon.href = this.appInfo.faviconUrl;
       this.document.head.append(favicon);
     }
     void this.loadTasks();

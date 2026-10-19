@@ -6,7 +6,7 @@
 **/node_modules
 **/dist
 **/.angular
-**/.brand
+**/.app-info
 **/coverage
 apps/api
 docs

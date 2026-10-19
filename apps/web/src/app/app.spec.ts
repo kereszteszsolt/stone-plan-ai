@@ -6,7 +6,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './app';
-import { BRAND } from './brand';
+import { APP_INFO } from './app-info';
 import type { TaskDetail } from './tasks-api.service';
 
 const task: TaskDetail = {
@@ -51,27 +51,27 @@ describe('Task screen', () => {
 
   it('uses the shared brand for its title, favicon and current-year sidebar attribution', async () => {
     await list();
-    expect(document.title).toBe(BRAND.appName);
-    expect(fixture.nativeElement.querySelector('h1').textContent).toBe(BRAND.appName);
-    expect(document.querySelector('link[rel="icon"]')?.getAttribute('href')).toBe(BRAND.faviconUrl);
+    expect(document.title).toBe(APP_INFO.appName);
+    expect(fixture.nativeElement.querySelector('h1').textContent).toBe(APP_INFO.appName);
+    expect(document.querySelector('link[rel="icon"]')?.getAttribute('href')).toBe(APP_INFO.faviconUrl);
     const footer = fixture.nativeElement.querySelector('.sidebar-footer');
-    expect(footer.textContent).toContain(`© ${new Date().getFullYear()} ${BRAND.authorName}`);
+    expect(footer.textContent).toContain(`© ${new Date().getFullYear()} ${APP_INFO.authorName}`);
     expect(footer.querySelector('.license-link').textContent).toBe('Apache-2.0');
-    expect(footer.querySelector('.author-website').textContent).toBe(BRAND.authorWebsiteLabel);
-    expect(footer.querySelector('.author-website').getAttribute('href')).toBe(BRAND.authorWebsite);
+    expect(footer.querySelector('.author-website').textContent).toBe(APP_INFO.authorWebsiteLabel);
+    expect(footer.querySelector('.author-website').getAttribute('href')).toBe(APP_INFO.authorWebsite);
   });
 
   it('offers configured project/author links and clearly labels voluntary author support', async () => {
     await list();
     const dialog = fixture.nativeElement.querySelector('dialog');
     expect(dialog.getAttribute('aria-labelledby')).toBe('about-heading');
-    expect(dialog.querySelector('#about-heading').textContent).toBe(`About ${BRAND.appName}`);
+    expect(dialog.querySelector('#about-heading').textContent).toBe(`About ${APP_INFO.appName}`);
     const links = [...dialog.querySelectorAll('.about-action')] as HTMLAnchorElement[];
-    expect(links.find((link) => link.textContent?.includes('Ways to support'))?.getAttribute('href')).toBe(BRAND.authorWaysToSupportUrl);
-    const website = links.find((link) => link.textContent?.includes(BRAND.authorWebsiteLabel));
-    expect(website?.getAttribute('href')).toBe(BRAND.authorWebsite);
-    expect(links.find((link) => link.textContent?.includes('Source'))?.getAttribute('href')).toBe(BRAND.appGithubUrl);
-    expect(links.find((link) => link.textContent?.includes('GitHub profile'))?.getAttribute('href')).toBe(BRAND.authorGithub);
+    expect(links.find((link) => link.textContent?.includes('Ways to support'))?.getAttribute('href')).toBe(APP_INFO.authorWaysToSupportUrl);
+    const website = links.find((link) => link.textContent?.includes(APP_INFO.authorWebsiteLabel));
+    expect(website?.getAttribute('href')).toBe(APP_INFO.authorWebsite);
+    expect(links.find((link) => link.textContent?.includes('Source'))?.getAttribute('href')).toBe(APP_INFO.appGithubUrl);
+    expect(links.find((link) => link.textContent?.includes('GitHub profile'))?.getAttribute('href')).toBe(APP_INFO.authorGithub);
     expect(links.every((link) => link.getAttribute('href') && link.rel.includes('noopener'))).toBe(true);
     expect(links.every((link) => !link.hasAttribute('title'))).toBe(true);
     expect(dialog.querySelector('.coffee-action').textContent).toContain('Buy me a Coffee');
@@ -79,10 +79,10 @@ describe('Task screen', () => {
     expect(supportGroup.textContent).toContain('Buy me a Coffee');
     expect(supportGroup.textContent).toContain('Ways to support');
     const copyright = dialog.querySelector('.about-copyright');
-    expect(copyright.textContent).toContain(`${BRAND.authorName}, Apache-2.0`);
+    expect(copyright.textContent).toContain(`${APP_INFO.authorName}, Apache-2.0`);
     expect(copyright.querySelector('a').getAttribute('href')).toBe(app.licenseUrl);
     expect(copyright.querySelector('.about-action')).toBeNull();
-    if (!BRAND.appWebsite) expect(links.some((link) => link.textContent?.includes('Project website'))).toBe(false);
+    if (!APP_INFO.appWebsite) expect(links.some((link) => link.textContent?.includes('Project website'))).toBe(false);
   });
 
   it('shows a described speech-bubble tooltip with the destination on focus, and dismisses it with Escape', async () => {
@@ -92,7 +92,7 @@ describe('Task screen', () => {
     const tooltip = fixture.nativeElement.querySelector('[role="tooltip"]') as HTMLElement;
     expect(link.getAttribute('aria-describedby')).toBe(tooltip.id);
     expect(tooltip.textContent).toContain("Author's website. Available in hu | en | ro | de.");
-    expect(tooltip.textContent).toContain(BRAND.authorWebsite);
+    expect(tooltip.textContent).toContain(APP_INFO.authorWebsite);
     const escape = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
     link.dispatchEvent(escape);
     expect(escape.defaultPrevented).toBe(true);
@@ -107,10 +107,10 @@ describe('Task screen', () => {
     const website = dialog.querySelector('.about-action') as HTMLAnchorElement;
     const support = dialog.querySelector('.about-support-actions a:last-child') as HTMLAnchorElement;
     website.dispatchEvent(new Event('mouseenter'));
-    expect(dialog.querySelector('[role="tooltip"]')?.textContent).toContain(BRAND.authorWebsite);
+    expect(dialog.querySelector('[role="tooltip"]')?.textContent).toContain(APP_INFO.authorWebsite);
     support.dispatchEvent(new Event('focus'));
     expect(dialog.querySelectorAll('[role="tooltip"]')).toHaveLength(1);
-    expect(dialog.querySelector('[role="tooltip"]')?.textContent).toContain(BRAND.authorWaysToSupportUrl);
+    expect(dialog.querySelector('[role="tooltip"]')?.textContent).toContain(APP_INFO.authorWaysToSupportUrl);
     expect(website.hasAttribute('aria-describedby')).toBe(false);
     dialog.dispatchEvent(new Event('close'));
     expect(dialog.querySelector('[role="tooltip"]')).toBeNull();

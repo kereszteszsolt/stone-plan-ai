@@ -2,7 +2,7 @@
 node_modules/
 dist/
 .angular/
-apps/web/.brand/
+apps/web/.app-info/
 coverage/
 .nx/
 .turbo/

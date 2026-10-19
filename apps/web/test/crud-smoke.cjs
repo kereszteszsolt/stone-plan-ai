@@ -7,7 +7,7 @@ const { mkdtempSync } = require('node:fs');
 const { tmpdir } = require('node:os');
 const { join } = require('node:path');
 const { chromium } = require('playwright-core');
-const brand = require('../../../brand/branding.json');
+const appInfo = require('../../../brand/branding.json');
 
 const baseUrl = process.env.STONE_PLAN_SMOKE_URL || process.env.TASK_FLOW_SMOKE_URL || 'http://localhost:33050';
 assert.ok(process.env.CHROME_EXECUTABLE, 'Set CHROME_EXECUTABLE to your local Chrome/headless-shell executable.');
@@ -40,14 +40,14 @@ async function run() {
 
   try {
     await page.goto(baseUrl);
-    await page.getByRole('heading', { level: 1, name: brand.appName, exact: true }).waitFor();
-    assert.equal(await page.title(), brand.appName);
+    await page.getByRole('heading', { level: 1, name: appInfo.appName, exact: true }).waitFor();
+    assert.equal(await page.title(), appInfo.appName);
     const favicon = await page.locator('link[rel="icon"]').getAttribute('href');
-    assert.equal(favicon, `assets/brand/${brand.appFavicon.slice('assets/'.length)}`);
+    assert.equal(favicon, `assets/app/${appInfo.appFavicon.slice('assets/'.length)}`);
     assert.equal((await context.request.get(`${baseUrl}/${favicon}`)).status(), 200);
-    assert.ok((await page.locator('.sidebar-footer').textContent()).includes(`© ${new Date().getFullYear()} ${brand.authorName}`));
-    assert.equal(await page.locator('.author-website').textContent(), new URL(brand.authorWebsite).hostname);
-    assert.equal(await page.locator('.author-website').getAttribute('href'), brand.authorWebsite);
+    assert.ok((await page.locator('.sidebar-footer').textContent()).includes(`© ${new Date().getFullYear()} ${appInfo.authorName}`));
+    assert.equal(await page.locator('.author-website').textContent(), new URL(appInfo.authorWebsite).hostname);
+    assert.equal(await page.locator('.author-website').getAttribute('href'), appInfo.authorWebsite);
     const sidebarBox = await page.locator('.sidebar').boundingBox();
     const detailBox = await page.locator('.task-detail').boundingBox();
     const footerBox = await page.locator('.sidebar-footer').boundingBox();
@@ -60,16 +60,16 @@ async function run() {
     assert.equal(await about.getByRole('button', { name: 'Close about', exact: true }).evaluate((button) => button === document.activeElement), true);
     await page.keyboard.press('Shift+Tab');
     assert.equal(await about.evaluate((dialog) => dialog.contains(document.activeElement)), true);
-    assert.equal(await about.getByRole('heading', { level: 2 }).textContent(), `About ${brand.appName}`);
-    assert.equal(await about.getByRole('link', { name: 'Ways to support' }).getAttribute('href'), brand.authorWaysToSupportUrl);
-    assert.equal(await about.getByRole('link', { name: new URL(brand.authorWebsite).hostname, exact: true }).getAttribute('href'), brand.authorWebsite);
+    assert.equal(await about.getByRole('heading', { level: 2 }).textContent(), `About ${appInfo.appName}`);
+    assert.equal(await about.getByRole('link', { name: 'Ways to support' }).getAttribute('href'), appInfo.authorWaysToSupportUrl);
+    assert.equal(await about.getByRole('link', { name: new URL(appInfo.authorWebsite).hostname, exact: true }).getAttribute('href'), appInfo.authorWebsite);
     assert.equal(await about.locator('.about-copyright .license-link').textContent(), 'Apache-2.0');
     await about.getByRole('link', { name: 'Ways to support', exact: true }).focus();
     assert.ok((await about.getByRole('tooltip').textContent()).includes('support the author'));
     await page.keyboard.press('Escape');
     await about.getByRole('tooltip').waitFor({ state: 'hidden' });
     await about.getByRole('link', { name: 'Buy me a Coffee', exact: true }).focus();
-    assert.ok((await about.getByRole('tooltip').textContent()).endsWith(brand.authorBuyMeACoffeeUrl));
+    assert.ok((await about.getByRole('tooltip').textContent()).endsWith(appInfo.authorBuyMeACoffeeUrl));
     await page.keyboard.press('Escape');
     await page.screenshot({ path: join(artifacts, 'about-desktop.png') });
     await page.keyboard.press('Escape');

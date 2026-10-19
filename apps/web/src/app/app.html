@@ -1,10 +1,10 @@
 <div class="app-shell">
   <header class="app-header">
-    <div class="brand-lockup">
-      @if (brand.iconUrl) { <img class="brand-mark" [src]="brand.iconUrl" alt="" width="48" height="48"> }
+    <div class="app-identity">
+      @if (appInfo.iconUrl) { <img class="app-icon" [src]="appInfo.iconUrl" alt="" width="48" height="48"> }
       <div>
-        <h1>{{ brand.appName }}</h1>
-        <p class="muted">{{ brand.appTagline }}</p>
+        <h1>{{ appInfo.appName }}</h1>
+        <p class="muted">{{ appInfo.appTagline }}</p>
       </div>
     </div>
     <nav class="main-nav" aria-label="Main">
@@ -50,8 +50,8 @@
 
       <footer class="sidebar-footer">
         <div class="attribution">
-          <span>© {{ currentYear }} {{ brand.authorName }}, <a class="license-link" [href]="licenseUrl" [appTooltip]="'Read the Apache-2.0 license.\n' + licenseUrl" target="_blank" rel="noopener noreferrer">Apache-2.0</a></span>
-          @if (brand.authorWebsite) { <a class="author-website" [href]="brand.authorWebsite" [appTooltip]="'Author’s website.' + authorWebsiteAvailability + '\n' + brand.authorWebsite" target="_blank" rel="noopener noreferrer">{{ brand.authorWebsiteLabel }}</a> }
+          <span>© {{ currentYear }} {{ appInfo.authorName }}, <a class="license-link" [href]="licenseUrl" [appTooltip]="'Read the Apache-2.0 license.\n' + licenseUrl" target="_blank" rel="noopener noreferrer">Apache-2.0</a></span>
+          @if (appInfo.authorWebsite) { <a class="author-website" [href]="appInfo.authorWebsite" [appTooltip]="'Author’s website.' + authorWebsiteAvailability + '\n' + appInfo.authorWebsite" target="_blank" rel="noopener noreferrer">{{ appInfo.authorWebsiteLabel }}</a> }
         </div>
       </footer>
     </aside>
@@ -155,7 +155,7 @@
           }
         } @else {
           <div class="welcome" [class.has-error]="!!detailError()">
-            @if (brand.iconUrl && !detailError()) { <img class="welcome-mark" [src]="brand.iconUrl" alt="" width="80" height="80"> }
+            @if (appInfo.iconUrl && !detailError()) { <img class="welcome-mark" [src]="appInfo.iconUrl" alt="" width="80" height="80"> }
             <h2 id="detail-heading">Task details</h2>
             @if (detailError()) {
               <p class="error" role="alert">{{ detailError() }}</p>
@@ -173,13 +173,13 @@
 
 <dialog #aboutDialog id="about-dialog" class="about-dialog" aria-labelledby="about-heading" (click)="closeAboutOnBackdrop($event)">
   <div class="about-header">
-    <h2 id="about-heading">About {{ brand.appName }}</h2>
+    <h2 id="about-heading">About {{ appInfo.appName }}</h2>
     <button type="button" class="close-about" (click)="closeAbout()" aria-label="Close about" autofocus><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
   </div>
   <div class="about-content">
     <div class="about-overview">
-      @if (brand.posterUrl) { <img class="about-poster" [src]="brand.posterUrl" [alt]="brand.appName + ' project poster'" loading="lazy" width="780" height="480"> }
-      <p class="about-intro">{{ brand.appDescription }}</p>
+      @if (appInfo.posterUrl) { <img class="about-poster" [src]="appInfo.posterUrl" [alt]="appInfo.appName + ' project poster'" loading="lazy" width="780" height="480"> }
+      <p class="about-intro">{{ appInfo.appDescription }}</p>
     </div>
     <nav class="about-actions" aria-label="Project and author links">
       @for (link of projectLinks; track link.id) {
@@ -210,8 +210,8 @@
     </nav>
     <div class="support-note" role="note">
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 7v6m0 4h.01"/></svg>
-      <p>{{ brand.supportRemarkText }}</p>
+      <p>{{ appInfo.supportRemarkText }}</p>
     </div>
-    <p class="about-copyright muted">© {{ currentYear }} {{ brand.authorName }}, <a class="license-link" [href]="licenseUrl" [appTooltip]="'Read the Apache-2.0 license.\n' + licenseUrl" target="_blank" rel="noopener noreferrer">Apache-2.0</a></p>
+    <p class="about-copyright muted">© {{ currentYear }} {{ appInfo.authorName }}, <a class="license-link" [href]="licenseUrl" [appTooltip]="'Read the Apache-2.0 license.\n' + licenseUrl" target="_blank" rel="noopener noreferrer">Apache-2.0</a></p>
   </div>
 </dialog>

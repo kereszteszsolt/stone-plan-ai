@@ -21,8 +21,8 @@
             "assets": [
               {
                 "glob": "**/*",
-                "input": ".brand/assets",
-                "output": "assets/brand"
+                "input": ".app-info/assets",
+                "output": "assets/app"
               }
             ],
             "styles": [

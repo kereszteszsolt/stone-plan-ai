@@ -324,3 +324,13 @@ Applied the user's supplied `brand/branding.json` exactly, including field order
 Suggested commit: `feat: use configured branding copy and languages`.
 
 Commit approved by the user on 2026-10-19 for the configured branding copy/languages and the local-startup/About-dismissal follow-up. Reviewed all nine changed files and the full staged/unstaged diff; the previously passed focused tests, production build and desktop/mobile browser checks apply to the unchanged source. No push requested.
+
+## 2026-10-19 — Function-based consumer names and one root metadata source
+
+The user explicitly limited this naming cleanup to CiteNook, ContestCheck, OpenNook, LocalNook, StonePlan and StoryCheck. Root `brand/` is the editable data/artwork source; consuming modules, components, scripts, styles, tests and guides use their function. The rule is recorded in `AGENTS.md`. The six source catalogs and all artwork were checked by SHA-256 against the task-start snapshot (25 JSON/artwork files unchanged). Existing unrelated pending changes and historical result fixtures were retained. No commit or push was requested.
+
+Renamed the frontend adapter to `app-info.ts`, preparation to `prepare-app-assets.cjs`, script commands to `assets:prepare`, generated input to `.app-info/app-info.json`, and public assets to `assets/app`. Header selectors use app-identity/app-icon. Source metadata/artwork, stable project IDs, persistence and provider logic are unchanged.
+
+`npm run build` and all 56 Angular unit tests passed. The web Docker image was rebuilt and manually refreshed; API and database container IDs/images/mounts are unchanged. Four deployed Chromium cases (desktop light/dark, 390px and 320px) verified title/icon/favicon/poster, current-year footer, About/support tooltip bounds and dismissal. Task GETs used an empty fixture; no writes, provider calls, page errors or external browser requests occurred.
+
+Cross-repository proof: **540 unit/API tests and 56 browser cases/scenarios passed**. Scoped filename/local-link/whitespace checks and the deployed source/asset/container audit passed. Local helper scripts, build/deploy logs, summaries and captures remain under `/tmp/app-ui-naming/`; they are not committed. Database containers and named mounts were preserved; untouched services retained their original policies. No live/paid model generation, new indexing or submitted-code execution was run. Hosted CI/public deployment and other browser engines were not tested.

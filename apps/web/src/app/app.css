@@ -6,9 +6,9 @@
 .app-header { position: sticky; top: 0; z-index: 2; min-height: var(--header-height); padding: 1rem 2rem; background: var(--panel); }
 .app-header::after, .sidebar::after, .sidebar-footer::before { content: ''; position: absolute; pointer-events: none; }
 .app-header::after { bottom: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--border) 15%, var(--border) 85%, transparent); }
-.brand-lockup { display: flex; align-items: center; gap: .85rem; min-width: 0; }
-.brand-mark { flex: 0 0 auto; width: 3rem; height: 3rem; }
-.brand-lockup p { margin: .3rem 0 0; font-size: .82rem; line-height: 1.4; }
+.app-identity { display: flex; align-items: center; gap: .85rem; min-width: 0; }
+.app-icon { flex: 0 0 auto; width: 3rem; height: 3rem; }
+.app-identity p { margin: .3rem 0 0; font-size: .82rem; line-height: 1.4; }
 h1 { margin: 0; font-size: 1.45rem; letter-spacing: -.04em; overflow-wrap: anywhere; }
 h2 { margin: 0; font-size: 1.2rem; }
 h3 { font-size: 1.05rem; }
@@ -124,7 +124,7 @@ button.close-about:hover { color: var(--link); border-color: var(--link); }
 
 @media (max-width: 640px) {
   .app-header { position: relative; flex-wrap: wrap; gap: 1rem; padding: 1rem; }
-  .brand-mark { width: 2.6rem; height: 2.6rem; }
+  .app-icon { width: 2.6rem; height: 2.6rem; }
   h1 { font-size: 1.3rem; }
   .main-nav { width: 100%; gap: .25rem; }
   .main-nav a, .main-nav .nav-about { padding: .5rem .9rem; }
