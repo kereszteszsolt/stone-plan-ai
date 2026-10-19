@@ -1,17 +1,17 @@
 {
   "appName": "StonePlan AI",
-  "appWebsite": "",
   "appTagline": "Break tasks into practical steps.",
   "appDescription": "Turn a goal into an editable daily plan and track your progress.",
-  "supportRemarkText": "Support is voluntary and does not create any obligation, priority service, special access or other consideration. Thank you for your attention, and also if you support my work in any way!",
+  "appWebsite": "",
   "appGithubUrl": "https://github.com/kereszteszsolt/stone-plan-ai",
+  "appFavicon": "assets/stoneplan-ai-favicon.svg",
+  "appIcon": "assets/stoneplan-ai-favicon.svg",
+  "appPoster": "assets/stoneplan-ai-poster.svg",
   "authorName": "Keresztes Zsolt",
   "authorWebsite": "https://kereszteszsolt.hu",
   "authorWebsiteLanguages": ["hu", "en", "ro", "de"],
   "authorGithub": "https://github.com/kereszteszsolt",
   "authorWaysToSupportUrl": "https://kereszteszsolt.hu/ways-to-support",
   "authorBuyMeACoffeeUrl": "https://buymeacoffee.com/kereszteszsolt",
-  "appFavicon": "assets/stoneplan-ai-favicon.svg",
-  "appIcon": "assets/stoneplan-ai-favicon.svg",
-  "appPoster": "assets/stoneplan-ai-poster.svg"
+  "supportRemarkText": "Support is voluntary and does not create any obligation, priority service, special access or other consideration. Thank you for your attention, and also if you support my work in any way!"
 }

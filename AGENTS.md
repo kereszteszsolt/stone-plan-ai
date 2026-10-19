@@ -49,3 +49,7 @@ No SPDX headers in Markdown, TOML, YAML, JSON, `.env.example`, Dockerfiles, gene
 ## Scope boundary
 
 Release 0.2 remains incomplete until both stories are implemented and verified. `docs/future.md` is an idea list, **not** a backlog. Do not add agent workflows, authentication, calendar integrations, new releases or new dependencies without a separate request.
+
+## Docker runtime rules
+
+Use the GitHub repository name as the Compose project: `stone-plan-ai`. Publish every host port only on `127.0.0.1`, above 33000, with no port shared by another repository. The current allocation is 33050 for web and 33051 for the optional development database. Set `restart: "no"` for every service and disable dependency-triggered restarts. Preserve existing data/model volumes when changing a project name or recreating containers.

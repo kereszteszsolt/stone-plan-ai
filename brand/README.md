@@ -5,20 +5,20 @@
 | Field | Meaning |
 | --- | --- |
 | `appName` | Display name |
-| `appWebsite` | Project website; empty when none is configured |
 | `appTagline` | Short tagline displayed in the header |
 | `appDescription` | Project description displayed in About |
-| `supportRemarkText` | Voluntary-support notice displayed in About |
+| `appWebsite` | Project website; empty when none is configured |
 | `appGithubUrl` | Project repository |
+| `appFavicon` | Optional local favicon |
+| `appIcon` | Optional local project mark |
+| `appPoster` | Optional local project poster |
 | `authorName` | Author display name |
 | `authorWebsite` | Author website |
 | `authorWebsiteLanguages` | Ordered language codes displayed in website/support tooltips |
 | `authorGithub` | Author GitHub profile |
 | `authorWaysToSupportUrl` | General ways to support the author |
 | `authorBuyMeACoffeeUrl` | Direct Buy Me a Coffee link |
-| `appFavicon` | Optional local favicon |
-| `appIcon` | Optional local project mark |
-| `appPoster` | Optional local project poster |
+| `supportRemarkText` | Voluntary-support notice displayed in About |
 
 Asset paths are relative to this `brand/` directory and must stay inside `assets/`. Empty paths mean no image. These are source paths, not public URLs: consumers must package or map them to their own public base. Do not fetch remote artwork or resolve arbitrary filesystem paths.
 

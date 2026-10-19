@@ -156,7 +156,7 @@ To expose only the demo database to native development processes:
 docker compose -f compose.yaml -f infra/compose.dev.yaml up -d --wait db
 ```
 
-This optional override publishes PostgreSQL to `127.0.0.1:5432`. The regular demo does not publish a database port.
+This optional override publishes PostgreSQL to `127.0.0.1:33051`. The regular demo does not publish a database port.
 
 In `apps/api`, copy `.env.example` to `.env` and match its database credentials to the root `.env`, then run:
 
